@@ -1,0 +1,202 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   Base
+   ============================================================ */
+:root {
+  --color-bg: #0a0a0a;
+  --color-fg: #fafafa;
+  --color-muted: #8c8c8c;
+  --color-accent: #e8d4a0;
+  --ease-out-expo: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html,
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: 'General Sans', system-ui, sans-serif;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 1.5;
+  overscroll-behavior: none;
+}
+
+/* Lenis owns the scroll — disable native smooth */
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+::selection {
+  background: var(--color-accent);
+  color: var(--color-bg);
+}
+
+/* ============================================================
+   Display typography
+   ============================================================ */
+.font-display {
+  font-family: 'Melodrama', 'General Sans', serif;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+}
+
+.headline-xl {
+  font-size: clamp(48px, 9vw, 102px);
+  line-height: 0.95;
+  letter-spacing: -0.03em;
+}
+
+.headline-lg {
+  font-size: clamp(36px, 6vw, 80px);
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.eyebrow {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+/* ============================================================
+   Reveal — words start hidden, GSAP fades them in
+   ============================================================ */
+.reveal-word {
+  display: inline-block;
+  opacity: 0.15;
+  transition: opacity 0.6s var(--ease-out-expo);
+  will-change: opacity;
+}
+.reveal-word.is-active {
+  opacity: 1;
+}
+
+/* ============================================================
+   Marquee — horizontal infinite scroll
+   ============================================================ */
+.marquee {
+  --duration: 28s;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  display: flex;
+}
+.marquee__track {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4rem;
+  padding-right: 4rem;
+  animation: marquee var(--duration) linear infinite;
+  will-change: transform;
+}
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-100%); }
+}
+
+/* ============================================================
+   Rotating titles (vertical flip)
+   ============================================================ */
+.rotator {
+  display: inline-flex;
+  flex-direction: column;
+  overflow: hidden;
+  height: 1.1em;
+  vertical-align: bottom;
+}
+.rotator__track {
+  display: flex;
+  flex-direction: column;
+  animation: rotate-titles 9s steps(1) infinite;
+}
+.rotator__track > span {
+  height: 1.1em;
+  display: inline-block;
+  line-height: 1.1;
+}
+@keyframes rotate-titles {
+  0%, 30%   { transform: translateY(0); }
+  33%, 63%  { transform: translateY(-1.1em); }
+  66%, 96%  { transform: translateY(-2.2em); }
+  100%      { transform: translateY(-3.3em); }
+}
+
+/* ============================================================
+   Magnetic link wrapper
+   ============================================================ */
+.magnetic {
+  display: inline-block;
+  will-change: transform;
+  transition: transform 0.4s var(--ease-out-expo);
+}
+.magnetic__inner {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* ============================================================
+   Project row — underline on hover, slide effect
+   ============================================================ */
+.project-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 2rem;
+  padding: 1.5rem 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: padding-left 0.4s var(--ease-out-expo),
+              color 0.3s var(--ease-out-expo);
+}
+.project-row:hover {
+  padding-left: 1rem;
+  color: var(--color-accent);
+}
+.project-row:hover .project-row__arrow {
+  transform: translateX(0) rotate(0deg);
+  opacity: 1;
+}
+.project-row__arrow {
+  display: inline-block;
+  margin-left: 0.5rem;
+  transform: translateX(-8px) rotate(-45deg);
+  opacity: 0;
+  transition: transform 0.4s var(--ease-out-expo), opacity 0.3s;
+}
+
+/* ============================================================
+   Container & utilities
+   ============================================================ */
+.container-edge {
+  width: 100%;
+  padding-inline: 1.5rem;
+  margin-inline: auto;
+  max-width: 1600px;
+}
+
+@media (min-width: 1024px) {
+  .container-edge { padding-inline: 3rem; }
+}
+
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }

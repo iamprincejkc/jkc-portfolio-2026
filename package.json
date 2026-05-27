@@ -1,0 +1,26 @@
+{
+  "name": "jkc-portfolio",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "nuxt build",
+    "dev": "nuxt dev",
+    "generate": "nuxt generate",
+    "preview": "nuxt preview",
+    "postinstall": "nuxt prepare"
+  },
+  "devDependencies": {
+    "@nuxt/image": "^1.8.1",
+    "@nuxtjs/tailwindcss": "^6.12.2",
+    "autoprefixer": "^10.4.20",
+    "nuxt": "^3.14.1592",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "vue": "^3.5.13",
+    "vue-router": "^4.4.5"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "lenis": "^1.1.18"
+  }
+}
