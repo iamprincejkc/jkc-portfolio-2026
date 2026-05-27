@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useNuxtApp } from 'nuxt/app'
 import { onMounted, onBeforeUnmount, ref } from 'vue'
 
 // Six scattered project thumbnails. Edit these freely — each can move
