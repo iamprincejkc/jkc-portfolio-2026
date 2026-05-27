@@ -9,7 +9,7 @@ interface Props {
 const props = withDefaults(defineProps<Props>(), {
   duration: '28s',
   reverse: false,
-  repeats: 6,
+  repeats: 2,
 })
 </script>
 

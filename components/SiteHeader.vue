@@ -138,9 +138,9 @@ onUnmounted(() => {
 .site-header__social-desktop { justify-content: flex-end; }
 
 @media (min-width: 768px) {
-  /* Desktop: brand | nav | socials | menu-btn */
+  /* Desktop: brand (1fr) | nav (auto, centered) | socials (1fr) | menu-btn (auto) */
   .site-header {
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: 1fr auto 1fr auto;
     gap: 2rem;
   }
   .site-header__nav-desktop,
