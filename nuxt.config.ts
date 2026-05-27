@@ -22,6 +22,7 @@ export default defineNuxtConfig({
         { name: 'theme-color', content: '#0a0a0a' },
       ],
       link: [
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
         // Fontshare delivers General Sans + Melodrama free for commercial use.
         { rel: 'preconnect', href: 'https://api.fontshare.com' },
         {
