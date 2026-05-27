@@ -1,0 +1,12 @@
+[build]
+  command = "npm run generate"
+  publish = ".output/public"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA-style fallback so client-side routes don't 404 on refresh
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
