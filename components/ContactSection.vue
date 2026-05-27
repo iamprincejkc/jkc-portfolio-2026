@@ -22,7 +22,7 @@ async function submit(e: Event) {
       <h2 class="font-display headline-lg max-w-4xl">
         Have a project in mind?<br />
         <a
-          href="mailto:jankevincadampog@gmail.com"
+          href="mailto:princejankevin+profile@gmail.com"
           class="italic text-accent underline decoration-1 underline-offset-[0.15em] hover:opacity-70 transition-opacity duration-fast"
         >
           Let&apos;s talk →
@@ -35,10 +35,10 @@ async function submit(e: Event) {
           <div>
             <p class="eyebrow mb-2">Email</p>
             <a
-              href="mailto:jankevincadampog@gmail.com"
+              href="mailto:princejankevin+profile@gmail.com"
               class="text-lg hover:text-accent transition-colors"
             >
-              jankevincadampog@gmail.com
+              princejankevin@gmail.com
             </a>
           </div>
           <div>
