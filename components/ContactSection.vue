@@ -11,10 +11,15 @@ const botField = ref('')
 /**
  * Posts to Netlify Forms.
  *
- * The form's shape is declared in the static public/__forms.html so Netlify
+ * The form's shape is declared in the static public/forms.html so Netlify
  * provisions an endpoint at build time - it detects forms by scanning deployed
  * HTML, and an SSR page is rendered too late for that. Submissions land in the
  * Netlify dashboard under Forms, and can be forwarded to email there.
+ *
+ * The file was originally `__forms.html`. Netlify never registered the form,
+ * and Cloudflare (which fronts this domain) was rewriting that URL's body with
+ * a /cdn-cgi interstitial. Both problems point at the underscore prefix, so
+ * the plain name is used instead.
  */
 async function submit(e: Event) {
   e.preventDefault()
@@ -32,7 +37,7 @@ async function submit(e: Event) {
       message: form.value.message,
     })
 
-    const response = await fetch('/__forms.html', {
+    const response = await fetch('/forms.html', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: body.toString(),
