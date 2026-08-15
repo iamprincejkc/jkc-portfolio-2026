@@ -6,8 +6,16 @@ import { createHash } from 'node:crypto'
  * There is no database to keep in sync.
  */
 
+/**
+ * Cloudinary stores video under a separate resource type, with its own upload,
+ * listing and delete endpoints. `kind` is the discriminator that decides which
+ * of those a given asset uses, and whether the UI renders <img> or <video>.
+ */
+export type MediaKind = 'image' | 'video'
+
 export type Photo = {
   publicId: string
+  kind: MediaKind
   /** Path segments used to build `/gallery/...` URLs. */
   slug: string[]
   width: number
@@ -19,8 +27,10 @@ export type Photo = {
   year: string
   tags: string[]
   alt: string
-  /** Dominant colour, painted before the image loads. */
+  /** Dominant colour, painted before the media loads. */
   color: string
+  /** Seconds. Video only. */
+  duration?: number
 }
 
 export type Category = { name: string; count: number }
@@ -101,6 +111,8 @@ type RawResource = {
   height?: number
   created_at?: string
   tags?: string[]
+  /** Video only, in seconds. */
+  duration?: number
   context?: Record<string, unknown> & { custom?: Record<string, string> }
 }
 
@@ -126,17 +138,18 @@ function titleFromPublicId(publicId: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-export function toPhoto(resource: RawResource): Photo {
+export function toPhoto(resource: RawResource, kind: MediaKind = 'image'): Photo {
   const context = readContext(resource)
   const tags = resource.tags ?? []
   const title = context.title?.trim() || titleFromPublicId(resource.public_id)
 
   return {
     publicId: resource.public_id,
+    kind,
     slug: resource.public_id.split('/'),
     width: resource.width ?? 1600,
     height: resource.height ?? 1067,
-    format: resource.format ?? 'jpg',
+    format: resource.format ?? (kind === 'video' ? 'mp4' : 'jpg'),
     createdAt: resource.created_at ?? new Date(0).toISOString(),
     title,
     client: context.client?.trim() ?? '',
@@ -146,6 +159,9 @@ export function toPhoto(resource: RawResource): Photo {
     tags,
     alt: context.alt?.trim() || title,
     color: /^#[0-9a-f]{6}$/i.test(context.color ?? '') ? context.color : '#e7e5e2',
+    ...(kind === 'video' && typeof resource.duration === 'number'
+      ? { duration: resource.duration }
+      : {}),
   }
 }
 
@@ -162,12 +178,13 @@ export function invalidatePhotos() {
   cache = null
 }
 
-export async function listPhotos(): Promise<Photo[]> {
-  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.photos
-
-  const { cloudName, apiKey, apiSecret, folder } = cloudinaryConfig()
-  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
-
+/** One resource type's listing, paged. */
+async function listKind(
+  kind: MediaKind,
+  cloudName: string,
+  auth: string,
+  folder: string,
+): Promise<Photo[]> {
   const resources: RawResource[] = []
   let cursor: string | undefined
 
@@ -182,7 +199,7 @@ export async function listPhotos(): Promise<Photo[]> {
     if (cursor) query.set('next_cursor', cursor)
 
     const data = await $fetch<{ resources?: RawResource[]; next_cursor?: string }>(
-      `https://api.cloudinary.com/v1_1/${cloudName}/resources/image/upload?${query}`,
+      `https://api.cloudinary.com/v1_1/${cloudName}/resources/${kind}/upload?${query}`,
       { headers: { Authorization: `Basic ${auth}` } },
     )
 
@@ -191,9 +208,32 @@ export async function listPhotos(): Promise<Photo[]> {
     if (!cursor) break
   }
 
-  const photos = resources
-    .map(toPhoto)
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+  return resources.map((resource) => toPhoto(resource, kind))
+}
+
+export async function listPhotos(): Promise<Photo[]> {
+  if (cache && Date.now() - cache.at < CACHE_TTL_MS) return cache.photos
+
+  const { cloudName, apiKey, apiSecret, folder } = cloudinaryConfig()
+  const auth = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64')
+
+  /*
+   * Images and video are separate resource types with separate endpoints, so
+   * this is two listings merged into one feed ordered by upload time. Fetched
+   * in parallel - they are independent, and doing them in series would double
+   * the wait on a cold cache.
+   *
+   * An account with no video at all still answers 200 with an empty list, so
+   * the video call is not conditional.
+   */
+  const [images, videos] = await Promise.all([
+    listKind('image', cloudName, auth, folder),
+    listKind('video', cloudName, auth, folder),
+  ])
+
+  const photos = [...images, ...videos].sort((a, b) =>
+    b.createdAt.localeCompare(a.createdAt),
+  )
 
   cache = { photos, at: Date.now() }
   return photos
@@ -233,6 +273,7 @@ export type UploadTicket = {
 export function createUploadTicket(
   context: Record<string, string>,
   tags: string[],
+  kind: MediaKind = 'image',
 ): UploadTicket {
   const { cloudName, apiKey, apiSecret, folder } = cloudinaryConfig()
 
@@ -253,12 +294,22 @@ export function createUploadTicket(
   return {
     apiKey,
     signature: signParams(params, apiSecret),
-    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`,
+    /*
+     * The resource type lives in the path, not in the signed parameters, so
+     * the same signature is valid for either endpoint. That is Cloudinary's
+     * design - it means the client cannot use an image ticket to smuggle in a
+     * video, because the folder and timestamp are still pinned by the
+     * signature and the URL is chosen here.
+     */
+    uploadUrl: `https://api.cloudinary.com/v1_1/${cloudName}/${kind}/upload`,
     params,
   }
 }
 
-export async function deletePhoto(publicId: string): Promise<void> {
+export async function deletePhoto(
+  publicId: string,
+  kind: MediaKind = 'image',
+): Promise<void> {
   const { cloudName, apiKey, apiSecret, folder } = cloudinaryConfig()
 
   // Never let a caller delete outside the folder this app owns.
@@ -278,8 +329,10 @@ export async function deletePhoto(publicId: string): Promise<void> {
     signature: signParams(params, apiSecret),
   })
 
+  // Destroy is also resource-type specific: calling the image endpoint for a
+  // video answers "not found" and silently leaves the asset in place.
   const result = await $fetch<{ result?: string }>(
-    `https://api.cloudinary.com/v1_1/${cloudName}/image/destroy`,
+    `https://api.cloudinary.com/v1_1/${cloudName}/${kind}/destroy`,
     { method: 'POST', body },
   )
 

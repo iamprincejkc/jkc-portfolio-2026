@@ -13,7 +13,7 @@ import type { Photo } from '../composables/useGallery'
 
 const props = defineProps<{ photo: Photo }>()
 
-const { url } = useCloudinaryImage()
+const { url, videoSrc, videoPoster } = useCloudinaryImage()
 const dialog = ref<HTMLDialogElement | null>(null)
 const open = ref(false)
 
@@ -63,7 +63,7 @@ function show() {
     class="eyebrow hover:text-primary transition-colors duration-fast"
     @click="show"
   >
-    Enlarge
+    {{ props.photo.kind === 'video' ? 'Play' : 'Enlarge' }}
   </button>
 
   <dialog
@@ -87,8 +87,17 @@ function show() {
       <div class="min-h-0 flex-1 px-6 pb-6">
         <!-- Mounted only while open, so the large source is never fetched for
              visitors who do not ask for it. -->
+        <video
+          v-if="open && props.photo.kind === 'video'"
+          :src="videoSrc(props.photo.publicId, 1920)"
+          :poster="videoPoster(props.photo.publicId, 1920)"
+          controls
+          autoplay
+          playsinline
+          class="h-full w-full object-contain"
+        />
         <img
-          v-if="open"
+          v-else-if="open"
           :src="url(props.photo.publicId, 2560)"
           :alt="props.photo.alt"
           class="h-full w-full object-contain"

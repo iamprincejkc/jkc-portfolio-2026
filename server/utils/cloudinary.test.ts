@@ -90,6 +90,31 @@ describe('toPhoto', () => {
   })
 })
 
+describe('media kind', () => {
+  it('defaults to image', () => {
+    expect(toPhoto({ public_id: 'gallery/x' }).kind).toBe('image')
+  })
+
+  it('carries video kind and duration through', () => {
+    const video = toPhoto(
+      { public_id: 'gallery/clip', duration: 12.4, format: 'mov' },
+      'video',
+    )
+    expect(video.kind).toBe('video')
+    expect(video.duration).toBeCloseTo(12.4)
+  })
+
+  it('does not put a duration on stills', () => {
+    // The field is optional on purpose; an image with duration 0 would be a lie.
+    expect(toPhoto({ public_id: 'gallery/x', duration: 5 }, 'image').duration).toBeUndefined()
+  })
+
+  it('defaults the format per kind', () => {
+    expect(toPhoto({ public_id: 'g/a' }, 'image').format).toBe('jpg')
+    expect(toPhoto({ public_id: 'g/b' }, 'video').format).toBe('mp4')
+  })
+})
+
 describe('categoriesOf', () => {
   it('counts tags and orders by frequency then name', () => {
     const photos = [

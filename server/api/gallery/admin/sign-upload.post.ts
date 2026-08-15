@@ -53,6 +53,10 @@ export default defineEventHandler(async (event) => {
     }
   }
 
+  // Whitelisted rather than trusted: this decides which Cloudinary endpoint
+  // the ticket points at, so an unrecognised value must not fall through.
+  const kind = body?.kind === 'video' ? 'video' : 'image'
+
   try {
     return createUploadTicket(
       {
@@ -63,6 +67,7 @@ export default defineEventHandler(async (event) => {
         color,
       },
       tags,
+      kind,
     )
   } catch (error) {
     if (error instanceof ConfigError) {

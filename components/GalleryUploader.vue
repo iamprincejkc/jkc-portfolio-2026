@@ -15,15 +15,58 @@ import { computed, onBeforeUnmount, ref } from 'vue'
 
 const emit = defineEmits<{ uploaded: [] }>()
 
-const ACCEPTED = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif']
-const MAX_BYTES = 25 * 1024 * 1024
+/*
+ * HEIC is the default on iPhone, and browsers frequently report it with an
+ * empty `file.type` - Chrome and Firefox cannot decode it, so they will not
+ * name it either. Matching on MIME alone rejects exactly the photos most
+ * likely to be uploaded, so extension is the fallback.
+ *
+ * Cloudinary transcodes HEIC on ingest and `f_auto` serves JPEG/WebP, so the
+ * gallery never has to display a format browsers cannot render.
+ */
+const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/heic', 'image/heif']
+const VIDEO_MIME = ['video/mp4', 'video/quicktime', 'video/webm']
+
+const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'heic', 'heif']
+const VIDEO_EXT = ['mp4', 'mov', 'webm', 'm4v']
+
+/** Video is an order of magnitude larger; one cap for both would be wrong. */
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+
 const CONCURRENCY = 3
+
+type Kind = 'image' | 'video'
+
+function extensionOf(name: string): string {
+  return name.split('.').pop()?.toLowerCase() ?? ''
+}
+
+/** Decide the resource type, falling back to extension when MIME is missing. */
+function kindOf(file: File): Kind | null {
+  const type = file.type.toLowerCase()
+  if (VIDEO_MIME.includes(type)) return 'video'
+  if (IMAGE_MIME.includes(type)) return 'image'
+
+  const ext = extensionOf(file.name)
+  if (VIDEO_EXT.includes(ext)) return 'video'
+  if (IMAGE_EXT.includes(ext)) return 'image'
+  return null
+}
+
+/** Browsers cannot paint a local HEIC preview, so do not try. */
+function canPreview(file: File): boolean {
+  const ext = extensionOf(file.name)
+  return !['heic', 'heif'].includes(ext) && !file.type.includes('heic') && !file.type.includes('heif')
+}
 
 type Status = 'queued' | 'uploading' | 'done' | 'error'
 
 type Item = {
   id: string
   file: File
+  kind: Kind
+  /** Empty when the browser cannot render a local preview (HEIC). */
   previewUrl: string
   title: string
   client: string
@@ -63,18 +106,23 @@ function addFiles(files: FileList | File[]) {
   const rejected: string[] = []
 
   for (const file of Array.from(files)) {
-    if (!ACCEPTED.includes(file.type)) {
+    const kind = kindOf(file)
+    if (!kind) {
       rejected.push(`${file.name} (unsupported type)`)
       continue
     }
-    if (file.size > MAX_BYTES) {
-      rejected.push(`${file.name} (over ${formatBytes(MAX_BYTES)})`)
+
+    const cap = kind === 'video' ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
+    if (file.size > cap) {
+      rejected.push(`${file.name} (over ${formatBytes(cap)})`)
       continue
     }
+
     accepted.push({
       id: `${file.name}-${file.size}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
       file,
-      previewUrl: URL.createObjectURL(file),
+      kind,
+      previewUrl: canPreview(file) ? URL.createObjectURL(file) : '',
       title: titleFromFilename(file.name),
       client: '',
       year,
@@ -91,19 +139,20 @@ function addFiles(files: FileList | File[]) {
 
 function remove(id: string) {
   const target = items.value.find((item) => item.id === id)
-  if (target) URL.revokeObjectURL(target.previewUrl)
+  // HEIC items have no object URL to revoke.
+  if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
   items.value = items.value.filter((item) => item.id !== id)
 }
 
 function clearAll() {
-  for (const item of items.value) URL.revokeObjectURL(item.previewUrl)
+  for (const item of items.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
   items.value = []
   summary.value = null
 }
 
 // Object URLs are a genuine leak across a long admin session.
 onBeforeUnmount(() => {
-  for (const item of items.value) URL.revokeObjectURL(item.previewUrl)
+  for (const item of items.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
 })
 
 async function uploadOne(item: Item): Promise<boolean> {
@@ -117,7 +166,9 @@ async function uploadOne(item: Item): Promise<boolean> {
     .filter(Boolean)
     .slice(0, 8)
 
-  const color = await dominantColor(item.file)
+  // Only still images the browser can decode yield a colour. Video and HEIC
+  // fall back to the neutral placeholder, which dominantColor already returns.
+  const color = item.kind === 'image' && item.previewUrl ? await dominantColor(item.file) : ''
 
   let ticket: {
     apiKey: string
@@ -136,6 +187,7 @@ async function uploadOne(item: Item): Promise<boolean> {
         alt: item.alt || item.title,
         color,
         tags,
+        kind: item.kind,
       },
     })
   } catch (caught: any) {
@@ -239,7 +291,9 @@ async function uploadAll() {
     >
       <p class="font-display text-2xl">Drop images here</p>
       <p class="mt-3 text-xs text-text-muted">
-        JPEG, PNG, WebP, AVIF or GIF · up to {{ formatBytes(MAX_BYTES) }} each
+        Photos (JPEG, PNG, HEIC, WebP, AVIF, GIF) up to
+        {{ formatBytes(MAX_IMAGE_BYTES) }} · video (MP4, MOV, WebM) up to
+        {{ formatBytes(MAX_VIDEO_BYTES) }}
       </p>
       <button
         type="button"
@@ -251,7 +305,7 @@ async function uploadAll() {
       <input
         ref="input"
         type="file"
-        :accept="ACCEPTED.join(',')"
+        :accept="[...IMAGE_MIME, ...VIDEO_MIME, ...IMAGE_EXT.map(e => `.${e}`), ...VIDEO_EXT.map(e => `.${e}`)].join(',')"
         multiple
         class="sr-only"
         @change="
@@ -273,7 +327,32 @@ async function uploadAll() {
           class="grid gap-5 border-b border-border-muted py-6 sm:grid-cols-[8rem_1fr]"
         >
           <div class="relative aspect-square overflow-hidden bg-white/5">
-            <img :src="item.previewUrl" alt="" class="h-full w-full object-cover" />
+            <!-- Video previews locally without any upload; HEIC cannot be
+                 decoded by Chrome or Firefox, so it gets a label instead of a
+                 broken image icon. -->
+            <video
+              v-if="item.kind === 'video' && item.previewUrl"
+              :src="item.previewUrl"
+              muted
+              playsinline
+              preload="metadata"
+              class="h-full w-full object-cover"
+            />
+            <img
+              v-else-if="item.previewUrl"
+              :src="item.previewUrl"
+              alt=""
+              class="h-full w-full object-cover"
+            />
+            <div
+              v-else
+              class="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center"
+            >
+              <span class="eyebrow !text-accent">{{ extensionOf(item.file.name) || 'file' }}</span>
+              <span class="text-[10px] leading-tight text-text-muted">
+                preview unavailable
+              </span>
+            </div>
             <div
               v-if="item.status === 'uploading' || item.status === 'done'"
               class="absolute inset-x-0 bottom-0 h-1 bg-white/20"

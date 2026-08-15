@@ -5,7 +5,7 @@ definePageMeta({ layout: 'gallery' })
 
 const route = useRoute()
 const { data, pending } = useGalleryPhotos()
-const { src, srcset } = useCloudinaryImage()
+const { src, srcset, videoSrc, videoPoster } = useCloudinaryImage()
 
 const key = computed(() => {
   const slug = route.params.slug
@@ -63,7 +63,19 @@ const loaded = ref(false)
         maxHeight: 'calc(100dvh - var(--gallery-header-h) - 8rem)',
       }"
     >
+      <video
+        v-if="photo.kind === 'video'"
+        :src="videoSrc(photo.publicId, 1920)"
+        :poster="videoPoster(photo.publicId, 1920)"
+        controls
+        playsinline
+        preload="metadata"
+        class="!object-contain"
+        :aria-label="photo.alt"
+        @loadeddata="loaded = true"
+      />
       <img
+        v-else
         :src="src(photo.publicId)"
         :srcset="srcset(photo.publicId)"
         sizes="100vw"
@@ -98,6 +110,15 @@ const loaded = ref(false)
         <div class="flex items-baseline justify-between gap-6 border-b border-border-muted py-3">
           <dt class="eyebrow shrink-0">Dimensions</dt>
           <dd class="truncate text-right text-sm">{{ photo.width }} × {{ photo.height }}</dd>
+        </div>
+        <div
+          v-if="photo.kind === 'video' && photo.duration"
+          class="flex items-baseline justify-between gap-6 border-b border-border-muted py-3"
+        >
+          <dt class="eyebrow shrink-0">Duration</dt>
+          <dd class="truncate text-right text-sm tabular-nums">
+            {{ formatDuration(photo.duration) }}
+          </dd>
         </div>
         <div class="flex items-center justify-between gap-6 py-3">
           <dt class="eyebrow shrink-0">Full size</dt>

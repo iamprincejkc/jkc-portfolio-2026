@@ -6,17 +6,17 @@ import type { Photo } from '../composables/useGallery'
 defineProps<{ photos: Photo[] }>()
 const emit = defineEmits<{ deleted: [] }>()
 
-const { url } = useCloudinaryImage()
+const { posterFor } = useCloudinaryImage()
 
 const confirming = ref<string | null>(null)
 const busy = ref(false)
 const error = ref<string | null>(null)
 
-async function confirmDelete(publicId: string) {
+async function confirmDelete(publicId: string, kind: 'image' | 'video') {
   busy.value = true
   error.value = null
   try {
-    await $fetch('/api/gallery/admin/delete', { method: 'POST', body: { publicId } })
+    await $fetch('/api/gallery/admin/delete', { method: 'POST', body: { publicId, kind } })
     confirming.value = null
     emit('deleted')
   } catch (caught: any) {
@@ -48,7 +48,7 @@ async function confirmDelete(publicId: string) {
           :style="{ backgroundColor: photo.color }"
         >
           <img
-            :src="url(photo.publicId, 160)"
+            :src="posterFor(photo, 160)"
             alt=""
             loading="lazy"
             decoding="async"
@@ -66,7 +66,7 @@ async function confirmDelete(publicId: string) {
             type="button"
             :disabled="busy"
             class="eyebrow border border-accent px-3 py-2 !text-accent transition-colors duration-fast hover:bg-accent hover:!text-text-inverse disabled:opacity-40"
-            @click="confirmDelete(photo.publicId)"
+            @click="confirmDelete(photo.publicId, photo.kind)"
           >
             {{ busy ? 'Deleting' : 'Confirm' }}
           </button>
