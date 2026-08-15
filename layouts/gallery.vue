@@ -1,5 +1,6 @@
 <script setup lang="ts">
 const { data } = useGallerySession()
+const route = useRoute()
 
 async function lock() {
   await $fetch('/api/gallery/session', { method: 'DELETE' })
@@ -18,6 +19,15 @@ async function lock() {
       </NuxtLink>
 
       <nav class="flex items-center gap-6">
+        <!-- Toggles between the browsable grid and the ambient wall. Shows the
+             destination rather than the current view, so the label is an
+             action. -->
+        <NuxtLink
+          :to="route.path === '/gallery/wall' ? '/gallery' : '/gallery/wall'"
+          class="eyebrow hover:text-primary transition-colors duration-fast"
+        >
+          {{ route.path === '/gallery/wall' ? 'Grid' : 'Wall' }}
+        </NuxtLink>
         <NuxtLink
           v-if="data?.scope === 'admin'"
           to="/gallery/admin"
