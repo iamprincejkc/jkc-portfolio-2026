@@ -109,7 +109,7 @@ onBeforeUnmount(() => {
             transform: `rotate(${t.rotate}deg)`,
           }"
         >
-          <img :src="t.image" alt="" class="block w-full h-auto rounded-xs shadow-lg" />
+          <img :src="t.image" alt="" class="block w-full h-auto rounded-xs shadow-lg" loading="lazy" decoding="async" />
         </div>
       </div>
 

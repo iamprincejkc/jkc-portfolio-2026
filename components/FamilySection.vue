@@ -32,7 +32,7 @@ const children = [
             class="family-member"
           >
             <div class="family-member__photo">
-              <NuxtImg :src="p.image" :alt="p.name" class="w-full h-full object-cover" />
+              <NuxtImg :src="p.image" :alt="p.name" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
             <p class="family-member__name">{{ p.name }}</p>
             <p class="family-member__relation">{{ p.relation }}</p>
@@ -52,7 +52,7 @@ const children = [
             :class="{ 'family-member--me': c.isMe }"
           >
             <div class="family-member__photo">
-              <NuxtImg :src="c.image" :alt="c.name" class="w-full h-full object-cover" />
+              <NuxtImg :src="c.image" :alt="c.name" class="w-full h-full object-cover" loading="lazy" decoding="async" />
             </div>
             <p class="family-member__name">{{ c.name }}</p>
             <p class="family-member__relation">{{ c.relation }}</p>

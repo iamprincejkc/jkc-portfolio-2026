@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#2b1a4a" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="description" content="A small world of us." />
+    <title>Piney</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>" />
+    <script type="module" crossorigin src="./assets/index-Eg5k-DyV.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/three-BKfbQnZk.js">
+    <link rel="stylesheet" crossorigin href="./assets/index-B4sTUjuh.css">
+  </head>
+  <body>
+    <canvas id="scene"></canvas>
+
+    <!-- Loading / intro gate. Also the audio-unlock tap target for iOS. -->
+    <div id="intro" class="overlay">
+      <div class="intro-card">
+        <h1 id="intro-title">&nbsp;</h1>
+        <p id="intro-subtitle">&nbsp;</p>
+        <div id="intro-progress" class="progress"><i></i></div>
+        <p id="intro-hint" class="hint">&nbsp;</p>
+        <button id="intro-begin" class="btn primary" disabled>Begin</button>
+      </div>
+    </div>
+
+    <!-- In-world HUD -->
+    <div id="hud" class="hud hidden">
+      <div id="hud-count" class="pill" aria-live="polite">0 / 0</div>
+      <div class="hud-buttons">
+        <button id="btn-sound" class="icon-btn" aria-label="Toggle sound" aria-pressed="false">♪</button>
+        <button id="btn-motion" class="icon-btn" aria-label="Toggle reduced motion" aria-pressed="false">✦</button>
+        <button id="btn-list" class="icon-btn" aria-label="Show all memories">☰</button>
+      </div>
+      <div id="prompt" class="prompt hidden">
+        <span id="prompt-label"></span>
+      </div>
+      <div id="joystick" class="joystick hidden"><i></i></div>
+    </div>
+
+    <!-- Memory panel -->
+    <div id="panel" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="panel-title">
+      <article class="panel-card">
+        <button id="panel-close" class="close-btn" aria-label="Close">×</button>
+        <p id="panel-date" class="panel-date"></p>
+        <h2 id="panel-title"></h2>
+        <img id="panel-photo" class="panel-photo hidden" alt="" />
+        <div id="panel-body" class="panel-body"></div>
+      </article>
+    </div>
+
+    <!-- Finale -->
+    <div id="finale" class="overlay hidden">
+      <div class="finale-card">
+        <h2 id="finale-title" class="finale-title"></h2>
+        <p id="finale-text"></p>
+        <button id="finale-again" class="btn">walk again</button>
+      </div>
+    </div>
+
+    <!-- Fallback for no WebGL, and the full text list behind the ☰ button -->
+    <div id="fallback" class="fallback hidden">
+      <header>
+        <h1 id="fb-title"></h1>
+        <p id="fb-subtitle"></p>
+        <button id="fb-close" class="btn hidden">back to the world</button>
+      </header>
+      <main id="fb-list"></main>
+    </div>
+
+  </body>
+</html>

@@ -31,7 +31,7 @@ const skills = [
           :key="`a-${i}`"
           class="flex items-center gap-3 px-6 py-3 mr-4 border border-border-muted rounded-full whitespace-nowrap"
         >
-          <img :src="s.icon" :alt="s.name" class="w-6 h-6" />
+          <img :src="s.icon" :alt="s.name" class="w-6 h-6" loading="lazy" decoding="async" width="24" height="24" />
           <span class="text-base">{{ s.name }}</span>
         </div>
       </div>
@@ -41,7 +41,7 @@ const skills = [
           :key="`b-${i}`"
           class="flex items-center gap-3 px-6 py-3 mr-4 border border-border-muted rounded-full whitespace-nowrap"
         >
-          <img :src="s.icon" :alt="s.name" class="w-6 h-6" />
+          <img :src="s.icon" :alt="s.name" class="w-6 h-6" loading="lazy" decoding="async" width="24" height="24" />
           <span class="text-base">{{ s.name }}</span>
         </div>
       </div>

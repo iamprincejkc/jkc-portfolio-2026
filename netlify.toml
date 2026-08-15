@@ -1,12 +1,36 @@
 [build]
-  command = "npm run generate"
-  publish = ".output/public"
+  # SSR build. Nitro auto-detects the Netlify preset and emits the server
+  # function alongside the static assets, so the PIN gate and the Cloudinary
+  # upload signing run on the server rather than in the browser.
+  command = "npm run build"
+  publish = "dist"
 
 [build.environment]
   NODE_VERSION = "20"
 
-# SPA-style fallback so client-side routes don't 404 on refresh
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
+# NOTE: the previous SPA catch-all (/* -> /index.html 200) has been removed.
+# It would shadow every server-rendered route, including /gate and /gallery.
+# Nitro handles routing now.
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+
+# Unlisted routes: keep them out of search results even if a link leaks.
+[[headers]]
+  for = "/gallery/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/gate"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+
+[[headers]]
+  for = "/evently/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"

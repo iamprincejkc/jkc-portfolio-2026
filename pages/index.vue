@@ -1,6 +1,8 @@
 <script setup lang="ts">
+// The descriptive title lives in nuxt.config so it applies everywhere. A page
+// title of "JKC" tells a search result nothing about who this is.
 useHead({
-  title: 'JKC',
+  title: 'Jan Kevin Cadampog — .NET & Angular Developer',
 })
 </script>
 

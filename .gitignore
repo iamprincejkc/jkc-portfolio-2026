@@ -4,3 +4,6 @@ node_modules
 .env
 .DS_Store
 dist
+
+# Superseded by server/routes/robots.txt.ts (pending manual delete)
+public/robots.txt.replaced-by-server-route

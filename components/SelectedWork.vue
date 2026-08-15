@@ -69,6 +69,16 @@ const projects: Project[] = [
   },
 ]
 
+/**
+ * Some work has no public URL - internal tooling, or a client product behind a
+ * login. Those entries render as plain elements rather than links: an anchor
+ * with href="#" and target="_blank" promises a destination, opens a blank tab,
+ * and delivers nothing.
+ */
+function isLinked(project: Project): boolean {
+  return Boolean(project.url) && project.url !== '#'
+}
+
 const sectionRef = ref<HTMLElement | null>(null)
 const pinRef = ref<HTMLElement | null>(null)
 const itemRefs = ref<HTMLElement[]>([])
@@ -183,23 +193,30 @@ onBeforeUnmount(() => {
         <div class="lg:col-span-6 order-1 lg:order-2 flex items-center">
           <ul class="w-full">
             <li v-for="(p, i) in projects" :key="p.slug">
-              <a
-                :href="p.url"
-                target="_blank"
-                rel="noopener"
+              <component
+                :is="isLinked(p) ? 'a' : 'div'"
+                v-bind="
+                  isLinked(p)
+                    ? { href: p.url, target: '_blank', rel: 'noopener noreferrer' }
+                    : {}
+                "
                 class="project-row block transition-all"
                 :class="{
                   'text-accent': activeIndex === i,
                   'text-text-muted opacity-50': activeIndex !== i,
+                  'cursor-default': !isLinked(p),
                 }"
               >
                 <span class="font-display text-xl md:text-2xl">
                   {{ p.name }}
-                  <span class="project-row__arrow">↗</span>
+                  <span v-if="isLinked(p)" class="project-row__arrow">↗</span>
+                  <span v-else class="ml-2 align-middle text-xs tracking-widest uppercase opacity-60">
+                    Internal
+                  </span>
                 </span>
                 <span class="hidden md:inline text-sm self-center">{{ p.category }}</span>
                 <span class="text-sm self-center tabular-nums">{{ p.role }} · {{ p.year }}</span>
-              </a>
+              </component>
             </li>
           </ul>
         </div>
@@ -231,25 +248,37 @@ onBeforeUnmount(() => {
 
       <ul class="space-y-12">
         <li v-for="p in projects" :key="p.slug">
-          <a :href="p.url" target="_blank" rel="noopener" class="block group">
+          <component
+            :is="isLinked(p) ? 'a' : 'div'"
+            v-bind="
+              isLinked(p) ? { href: p.url, target: '_blank', rel: 'noopener noreferrer' } : {}
+            "
+            class="block group"
+          >
             <div class="overflow-hidden rounded-xs mb-4">
               <NuxtImg
                 :src="p.image"
                 :alt="p.name"
                 class="w-full h-auto group-hover:scale-[1.02] transition-transform duration-slow"
                 loading="lazy"
+                sizes="100vw sm:640px"
               />
             </div>
             <div class="flex items-end justify-between gap-4">
               <div>
-                <h3 class="font-display text-2xl italic">{{ p.name }} <span class="text-accent">↗</span></h3>
-                <p class="text-sm text-text-muted mt-1">{{ p.category }}</p>
+                <h3 class="font-display text-2xl italic">
+                  {{ p.name }}
+                  <span v-if="isLinked(p)" class="text-accent">↗</span>
+                </h3>
+                <p class="text-sm text-text-muted mt-1">
+                  {{ p.category }}<template v-if="!isLinked(p)"> · Internal</template>
+                </p>
               </div>
               <p class="text-xs text-text-muted tabular-nums whitespace-nowrap">
                 {{ p.role }}<br />{{ p.year }}
               </p>
             </div>
-          </a>
+          </component>
         </li>
       </ul>
     </div>

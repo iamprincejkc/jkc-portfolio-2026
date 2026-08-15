@@ -42,15 +42,20 @@ onBeforeUnmount(() => {
   <section ref="sectionRef" id="about" class="py-32 md:py-48">
     <div class="container-edge max-w-5xl">
       <p v-if="eyebrow" class="eyebrow mb-8">{{ eyebrow }}</p>
+      <!--
+        Each word is its own element so GSAP can stagger their opacity. The
+        separator is a real space rather than a margin: with margin alone the
+        rendered text looks spaced but `textContent` reads
+        "Idesignandbuild...", which is what a screen reader announces and what
+        lands on the clipboard when someone copies the paragraph.
+      -->
       <h2 class="font-display headline-lg leading-[1.1]">
-        <span
-          v-for="(w, i) in words"
-          :key="i"
-          :ref="(el) => { if (el) wordsRef[i] = el as HTMLElement }"
-          class="reveal-word mr-[0.25em]"
-        >
-          {{ w }}
-        </span>
+        <template v-for="(w, i) in words" :key="i">
+          <span
+            :ref="(el) => { if (el) wordsRef[i] = el as HTMLElement }"
+            class="reveal-word"
+          >{{ w }}</span>{{ ' ' }}
+        </template>
       </h2>
     </div>
   </section>

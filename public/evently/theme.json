@@ -1,0 +1,50 @@
+{
+  "$comment": "Colours, world shape and the player's look. Swap these to re-skin the whole thing without touching code.",
+  "seed": 20260320,
+  "palette": {
+    "skyTop": "#2b1a4a",
+    "skyBottom": "#ffb99a",
+    "sun": "#ffd6a5",
+    "fog": "#e8a98f",
+    "pineDark": "#356654",
+    "pineLight": "#589a78",
+    "trunk": "#54402f",
+    "groundLow": "#789a5c",
+    "groundHigh": "#9cba74",
+    "sand": "#d8c49b",
+    "water": "#3d6b8f",
+    "rock": "#6b6b73",
+    "bamboo": "#7fa86b",
+    "glow": "#ffc8dd",
+    "firefly": "#ffe6a5"
+  },
+  "world": {
+    "size": 120,
+    "pineCount": 165,
+    "heroPine": { "position": [6, -36], "scale": 3.2 },
+    "house": { "position": [-11, 34], "rotation": 205 },
+    "bambooCount": 90,
+    "rockCount": 40,
+    "flowerCount": 260,
+    "fireflyCount": 150,
+    "fogNear": 45,
+    "fogFar": 115
+  },
+  "player": {
+    "$comment": "Make it a red panda, a cat, whatever. body/head are the two big shapes.",
+    "name": "panda",
+    "body": "#f4f0e8",
+    "dark": "#2e2b30",
+    "muzzle": "#f9f6f0",
+    "nose": "#2e2b30",
+    "blush": "#ffb3c6",
+    "speed": 7.5,
+    "runScale": 1.0
+  },
+  "ui": {
+    "font": "'Segoe UI', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif",
+    "panelBg": "#1a1226",
+    "panelText": "#f6ecf2",
+    "accent": "#ffc8dd"
+  }
+}

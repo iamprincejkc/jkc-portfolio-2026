@@ -41,7 +41,7 @@ onUnmounted(() => {
   >
     <!-- Brand -->
     <div class="site-header__brand">
-      <NuxtLink to="/" @click="close" class="font-medium tracking-tight">JKC</NuxtLink>
+      <NuxtLink to="/" @click="close" class="tap-safe font-medium tracking-tight">JKC</NuxtLink>
       <span class="text-text-muted text-xs hidden md:inline ml-3">© 2026</span>
     </div>
 

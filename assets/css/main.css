@@ -200,3 +200,152 @@ html.lenis body {
 
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { scrollbar-width: none; }
+
+/* ============================================================
+   Touch targets
+
+   Small inline links (footer lists, social rows) sit around 20px tall, which
+   is fine to click and awkward to tap. This grows the hit area on touch
+   devices only, and the negative margin cancels the layout change so nothing
+   moves visually.
+   ============================================================ */
+@media (pointer: coarse) {
+  .tap-safe {
+    display: inline-block;
+    padding-block: 0.6875rem;
+    margin-block: -0.6875rem;
+  }
+}
+
+/* ============================================================
+   Gallery (unlisted /gallery)
+   ============================================================ */
+:root {
+  --gallery-header-h: 3.5rem;
+}
+
+@media (min-width: 1024px) {
+  :root { --gallery-header-h: 4rem; }
+}
+
+/* Editorial 12-column grid with a repeating six-item rhythm, so the feed has
+   a deliberate cadence instead of reading as a uniform tile wall. */
+.feed {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: clamp(2.5rem, 6vw, 5rem) 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 640px) {
+  .feed { grid-template-columns: repeat(12, 1fr); }
+  .feed > * { grid-column: span 6; }
+  .feed > *:nth-child(6n + 1) { grid-column: span 7; }
+  .feed > *:nth-child(6n + 2) { grid-column: span 5; }
+  .feed > *:nth-child(6n + 3) { grid-column: span 5; }
+  .feed > *:nth-child(6n + 4) { grid-column: span 7; }
+}
+
+@media (min-width: 1024px) {
+  .feed { gap: clamp(3rem, 6vw, 6rem) 3rem; }
+  .feed > *:nth-child(6n + 3) { grid-column: span 4; }
+  .feed > *:nth-child(6n + 4) { grid-column: span 8; }
+}
+
+/* Offscreen tiles skip layout and paint until they approach the viewport.
+   contain-intrinsic-size keeps the scrollbar honest meanwhile. Applied from
+   the seventh tile so nothing above the fold is deferred. */
+@media (min-width: 640px) {
+  .feed > *:nth-child(n + 7) {
+    content-visibility: auto;
+    contain-intrinsic-size: auto none auto 32rem;
+  }
+}
+
+.frame {
+  position: relative;
+  overflow: hidden;
+  background: #141414;
+}
+
+.frame img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.9s var(--ease-out-expo), opacity 0.6s ease;
+}
+
+.frame-link:hover .frame img {
+  transform: scale(1.03);
+}
+
+/* Images fade in over their dominant colour rather than popping. */
+.frame img[data-loaded='false'] {
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .frame img { transition: none; }
+  .frame-link:hover .frame img { transform: none; }
+}
+
+/* Scroll reveal: native scroll-driven where supported, JS fallback elsewhere. */
+@media (prefers-reduced-motion: no-preference) {
+  @supports ((animation-timeline: view()) and (animation-range: entry)) {
+    .g-reveal {
+      animation: g-reveal-in auto linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+
+  @supports not ((animation-timeline: view()) and (animation-range: entry)) {
+    .g-reveal {
+      opacity: 0;
+      transform: translateY(1.25rem);
+      transition: opacity 0.7s var(--ease-out-expo), transform 0.7s var(--ease-out-expo);
+    }
+    .g-reveal[data-revealed='true'] {
+      opacity: 1;
+      transform: none;
+    }
+  }
+}
+
+@keyframes g-reveal-in {
+  from { opacity: 0; transform: translateY(1.75rem); }
+  to   { opacity: 1; transform: none; }
+}
+
+/* Lightbox */
+dialog.lightbox {
+  width: 100vw;
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-fg);
+  opacity: 0;
+  transition: opacity 0.4s var(--ease-out-expo),
+              display 0.4s allow-discrete,
+              overlay 0.4s allow-discrete;
+}
+
+dialog.lightbox[open] { opacity: 1; }
+
+@starting-style {
+  dialog.lightbox[open] { opacity: 0; }
+}
+
+dialog.lightbox::backdrop {
+  background: rgba(10, 10, 10, 0.94);
+  backdrop-filter: blur(16px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog.lightbox { transition-duration: 80ms; }
+}
