@@ -3,49 +3,54 @@ import type { Photo } from './useGallery'
 /**
  * The infinite four-way parallax wall.
  *
- * Four depth layers of images scroll in different directions at different
- * speeds. Sprites are recycled as they leave the viewport, so the wall is
- * endless without holding more than a screenful plus a margin.
+ * Four sparse bands of photos, each travelling in its own direction. Depth
+ * comes from three things working together: bands further back are drawn
+ * smaller, they move slower, and every sprite carries its own speed variation
+ * so nothing travels in lockstep.
  *
- * Kept out of the component so the Three.js import stays dynamic - it is
- * roughly half a megabyte, and only this one route should pay for it.
+ * Motion is driven by scrolling, not by a clock. At rest the wall drifts to a
+ * stop and only breathes - a slow sway and pulse - so it is alive without
+ * moving on its own. Scrolling accelerates it; a horizontal drag steers it and
+ * can reverse it.
  *
- * Differences from the reference pen this is based on, all because that pen is
- * a standalone page and this is a route inside an SPA:
- *
- *  - Everything is disposed on teardown. Textures, geometries, materials and
- *    the WebGL context all leak otherwise, and navigating in and out of the
- *    route a few times will exhaust the GPU.
- *  - Animation stops when the tab is hidden and when the user prefers reduced
- *    motion. A continuous full-screen scroll is a textbook vestibular trigger.
- *  - Sprites are dealt from a shuffled deck rather than picked at random, so a
- *    small library does not show the same photo three times at once.
+ * Kept out of the component so the Three.js import stays dynamic: it is around
+ * 700KB, and only this route should pay for it.
  */
 
 type Direction = 'rightToLeft' | 'leftToRight' | 'topToBottom' | 'bottomToTop'
 
-type LayerConfig = {
-  speed: number
-  opacity: number
-  direction: Direction
-  /** Nearer layers are drawn larger and move faster - that is the parallax. */
-  scale: number
-}
+type Band = { speed: number; opacity: number; direction: Direction }
 
-const LAYERS: LayerConfig[] = [
-  { speed: 80, opacity: 0.97, direction: 'rightToLeft', scale: 1.15 },
-  { speed: 40, opacity: 0.9, direction: 'leftToRight', scale: 0.85 },
-  { speed: 60, opacity: 0.94, direction: 'topToBottom', scale: 1.0 },
-  { speed: 70, opacity: 0.92, direction: 'bottomToTop', scale: 0.95 },
+const BANDS: Band[] = [
+  { speed: 80, opacity: 0.97, direction: 'rightToLeft' },
+  { speed: 40, opacity: 0.9, direction: 'leftToRight' },
+  { speed: 60, opacity: 0.94, direction: 'topToBottom' },
+  { speed: 70, opacity: 0.92, direction: 'bottomToTop' },
 ]
 
+/**
+ * Sprites per band. Deliberately sparse - each band is a line of photos with
+ * space around it, not a grid. Filling the viewport instead produces a solid
+ * mosaic with no sense of depth.
+ */
+const PER_BAND = 15
+
+/** Longest edge of a front-band sprite, before depth and jitter. */
 const TILE = 260
-const GUTTER = 40
+
+/** Depth: bands further back are drawn smaller. */
+const DEPTH_SCALE = [1.0, 0.8, 0.65, 0.5]
+
+const MAX_SPEED = 5
+/** Per-frame decay, so the wall coasts to rest instead of running forever. */
+const FRICTION = 0.94
 
 export type WallHandle = {
   destroy: () => void
   setPaused: (paused: boolean) => void
 }
+
+const rand = (min: number, max: number) => min + Math.random() * (max - min)
 
 export async function createParallaxWall(
   container: HTMLElement,
@@ -61,11 +66,8 @@ export async function createParallaxWall(
 
   let camera = new THREE.OrthographicCamera(0, 1, 1, 0, -1000, 1000)
 
-  /*
-   * Deal from a shuffled deck and reshuffle when it runs out. Picking at
-   * random instead means a library of six photos shows visible duplicates
-   * side by side almost immediately.
-   */
+  /* Deal from a shuffled deck: random picks put the same photo on screen
+     several times at once when the library is small. */
   let deck: Photo[] = []
   function nextPhoto(): Photo {
     if (!deck.length) {
@@ -95,56 +97,71 @@ export async function createParallaxWall(
   type Sprite = {
     mesh: THREE.Mesh
     material: THREE.MeshBasicMaterial
-    layer: number
+    band: number
+    speed: number
+    width: number
+    height: number
+    seed: number
+    baseX: number
+    baseY: number
+    /** Total run length of this band, used to wrap round. */
+    span: number
   }
 
   const sprites: Sprite[] = []
   const geometry = new THREE.PlaneGeometry(1, 1)
 
-  function viewport() {
-    return { w: container.clientWidth, h: container.clientHeight }
-  }
+  const viewport = () => ({ w: container.clientWidth, h: container.clientHeight })
 
-  function addSprite(layerIndex: number, x: number, y: number) {
-    const config = LAYERS[layerIndex]
-    const photo = nextPhoto()
-
-    const material = new THREE.MeshBasicMaterial({
-      map: textureFor(photo),
-      transparent: true,
-      opacity: config.opacity,
-    })
-
-    // Keep the photo's real proportions; a wall of identical squares reads as
-    // wallpaper rather than as photographs.
-    const ratio = photo.width / photo.height || 1
-    const size = TILE * config.scale
-    const w = ratio >= 1 ? size : size * ratio
-    const h = ratio >= 1 ? size / ratio : size
-
-    const mesh = new THREE.Mesh(geometry, material)
-    mesh.scale.set(w, h, 1)
-    mesh.position.set(x, y, layerIndex)
-
-    scene.add(mesh)
-    sprites.push({ mesh, material, layer: layerIndex })
-  }
-
-  /** Fill each layer with a grid large enough to cover the viewport plus a margin. */
   function build() {
     const { w, h } = viewport()
 
-    LAYERS.forEach((config, layerIndex) => {
-      const step = TILE * config.scale + GUTTER
-      const cols = Math.ceil(w / step) + 2
-      const rows = Math.ceil(h / step) + 2
+    BANDS.forEach((band, bandIndex) => {
+      const depth = DEPTH_SCALE[bandIndex]
+      const horizontal = band.direction === 'rightToLeft' || band.direction === 'leftToRight'
 
-      for (let c = 0; c < cols; c += 1) {
-        for (let r = 0; r < rows; r += 1) {
-          // Stagger alternate columns so the layers do not read as a grid.
-          const offset = c % 2 ? step / 2 : 0
-          addSprite(layerIndex, c * step - step, r * step - step + offset)
-        }
+      for (let i = 0; i < PER_BAND; i += 1) {
+        const photo = nextPhoto()
+        const ratio = photo.width / photo.height || 1
+
+        // Slight per-sprite size jitter stops the band reading as a filmstrip.
+        const jitter = rand(0.85, 1.15)
+        const size = TILE * depth * jitter
+        const sw = ratio > 1 ? size : size * ratio
+        const sh = ratio > 1 ? size / ratio : size
+
+        // Spaced along the axis of travel, scattered across the other one.
+        const spacing = (horizontal ? sw : sh) * 1.6
+        const span = spacing * PER_BAND
+
+        const x = horizontal ? i * spacing : rand(sw / 2, Math.max(sw, w - sw / 2))
+        const y = horizontal ? rand(sh / 2, Math.max(sh, h - sh / 2)) : i * spacing
+
+        const material = new THREE.MeshBasicMaterial({
+          map: textureFor(photo),
+          transparent: true,
+          opacity: band.opacity,
+        })
+
+        const mesh = new THREE.Mesh(geometry, material)
+        mesh.scale.set(sw, sh, 1)
+        // Nearer bands draw on top.
+        mesh.position.set(x, y, -bandIndex * 10)
+        scene.add(mesh)
+
+        sprites.push({
+          mesh,
+          material,
+          band: bandIndex,
+          // Per-sprite variation is what stops a band moving as one slab.
+          speed: band.speed * rand(0.7, 1.3),
+          width: sw,
+          height: sh,
+          seed: rand(0, 1000),
+          baseX: x,
+          baseY: y,
+          span,
+        })
       }
     })
   }
@@ -153,51 +170,72 @@ export async function createParallaxWall(
     const { w, h } = viewport()
     renderer.setSize(w, h, false)
     camera = new THREE.OrthographicCamera(0, w, h, 0, -1000, 1000)
-    camera.position.z = 10
+    camera.position.z = 100
   }
 
-  /** Wrap a sprite round to the opposite edge once it has fully left. */
+  /** Wrap a sprite to the far end of its band once it has fully left. */
   function wrap(sprite: Sprite) {
     const { w, h } = viewport()
-    const config = LAYERS[sprite.layer]
-    const step = TILE * config.scale + GUTTER
+    const direction = BANDS[sprite.band].direction
     const p = sprite.mesh.position
 
-    if (config.direction === 'rightToLeft' && p.x < -step) p.x += Math.ceil((w + step * 2) / step) * step
-    if (config.direction === 'leftToRight' && p.x > w + step) p.x -= Math.ceil((w + step * 2) / step) * step
-    if (config.direction === 'topToBottom' && p.y > h + step) p.y -= Math.ceil((h + step * 2) / step) * step
-    if (config.direction === 'bottomToTop' && p.y < -step) p.y += Math.ceil((h + step * 2) / step) * step
+    if (direction === 'rightToLeft' && p.x < -sprite.width) {
+      p.x += sprite.span
+      sprite.baseX += sprite.span
+    } else if (direction === 'leftToRight' && p.x > w + sprite.width) {
+      p.x -= sprite.span
+      sprite.baseX -= sprite.span
+    } else if (direction === 'topToBottom' && p.y > h + sprite.height) {
+      p.y -= sprite.span
+      sprite.baseY -= sprite.span
+    } else if (direction === 'bottomToTop' && p.y < -sprite.height) {
+      p.y += sprite.span
+      sprite.baseY += sprite.span
+    }
   }
 
-  // --- interaction -------------------------------------------------------
+  // --- input -------------------------------------------------------------
 
-  let speedFactor = 1
+  let speed = 0
   let dragging = false
   let lastX = 0
+
+  const clamp = (v: number) => Math.max(-MAX_SPEED, Math.min(MAX_SPEED, v))
 
   const onPointerDown = (e: PointerEvent) => {
     dragging = true
     lastX = e.clientX
+    container.setPointerCapture?.(e.pointerId)
   }
   const onPointerMove = (e: PointerEvent) => {
     if (!dragging) return
     const delta = e.clientX - lastX
     lastX = e.clientX
-    // A horizontal drag scrubs speed and can reverse direction, as in the
-    // reference. Clamped so it cannot be flung into nausea.
-    speedFactor = Math.max(-3, Math.min(3, speedFactor + delta * 0.01))
+    speed = clamp(speed - delta * 0.05)
   }
   const onPointerUp = () => {
     dragging = false
   }
   const onWheel = (e: WheelEvent) => {
     e.preventDefault()
-    speedFactor = Math.max(-3, Math.min(3, speedFactor + e.deltaY * 0.002))
+    // Push in the direction of the wheel, accelerating on repeat scrolls.
+    const direction = Math.sign(e.deltaY) || 1
+    speed = clamp(direction * (Math.abs(speed) + 0.6))
   }
   const onDoubleClick = () => {
-    // Reshuffle which layer sits in front, and re-deal the photos.
+    // Re-deal the photos and re-scatter, without rebuilding the GL objects.
+    const { w, h } = viewport()
     for (const sprite of sprites) {
-      sprite.mesh.position.z = Math.random() * LAYERS.length
+      const horizontal =
+        BANDS[sprite.band].direction === 'rightToLeft' ||
+        BANDS[sprite.band].direction === 'leftToRight'
+      sprite.material.map = textureFor(nextPhoto())
+      sprite.material.needsUpdate = true
+      if (horizontal) {
+        sprite.baseY = rand(sprite.height / 2, Math.max(sprite.height, h - sprite.height / 2))
+      } else {
+        sprite.baseX = rand(sprite.width / 2, Math.max(sprite.width, w - sprite.width / 2))
+      }
     }
   }
 
@@ -222,15 +260,36 @@ export async function createParallaxWall(
     last = now
 
     if (!paused && document.visibilityState === 'visible') {
+      // Coast to a stop rather than running on a clock.
+      if (!dragging) speed *= FRICTION
+      if (Math.abs(speed) < 0.001) speed = 0
+
       for (const sprite of sprites) {
-        const config = LAYERS[sprite.layer]
-        const distance = config.speed * speedFactor * dt
+        const direction = BANDS[sprite.band].direction
+        const distance = sprite.speed * speed * dt
         const p = sprite.mesh.position
 
-        if (config.direction === 'rightToLeft') p.x -= distance
-        if (config.direction === 'leftToRight') p.x += distance
-        if (config.direction === 'topToBottom') p.y += distance
-        if (config.direction === 'bottomToTop') p.y -= distance
+        if (direction === 'rightToLeft') {
+          sprite.baseX -= distance
+        } else if (direction === 'leftToRight') {
+          sprite.baseX += distance
+        } else if (direction === 'topToBottom') {
+          sprite.baseY += distance
+        } else {
+          sprite.baseY -= distance
+        }
+
+        /*
+         * A slow sway and pulse, independent of scrolling. This is what keeps
+         * the wall alive when it is at rest - without it, a stopped wall is a
+         * static collage.
+         */
+        const sway = Math.sin(now * 0.001 + sprite.seed) * 3
+        const pulse = 1 + Math.sin(now * 0.001 + sprite.seed) * 0.015
+
+        p.x = sprite.baseX + (direction === 'topToBottom' || direction === 'bottomToTop' ? sway : 0)
+        p.y = sprite.baseY + (direction === 'rightToLeft' || direction === 'leftToRight' ? sway : 0)
+        sprite.mesh.scale.set(sprite.width * pulse, sprite.height * pulse, 1)
 
         wrap(sprite)
       }
@@ -259,9 +318,9 @@ export async function createParallaxWall(
       window.removeEventListener('resize', resize)
 
       /*
-       * Order matters and none of it is optional. Without this, navigating
-       * away and back a few times exhausts the GPU - the browser caps live
-       * WebGL contexts and silently kills the oldest.
+       * None of this is optional. Browsers cap live WebGL contexts and kill
+       * the oldest silently, so leaking one per visit breaks the route after
+       * a handful of navigations.
        */
       for (const sprite of sprites) {
         scene.remove(sprite.mesh)

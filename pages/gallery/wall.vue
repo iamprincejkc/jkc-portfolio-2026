@@ -104,7 +104,7 @@ onBeforeUnmount(() => {
     <div v-if="status === 'running'" class="wall__hint">
       <p class="eyebrow">
         <span v-if="reducedMotion">Motion paused &middot; drag to move</span>
-        <span v-else>Scroll or drag to steer &middot; double-click to reshuffle</span>
+        <span v-else>Scroll to move &middot; drag to steer &middot; double-click to reshuffle</span>
       </p>
     </div>
   </div>
