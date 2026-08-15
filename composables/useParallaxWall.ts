@@ -8,10 +8,10 @@ import type { Photo } from './useGallery'
  * smaller, they move slower, and every sprite carries its own speed variation
  * so nothing travels in lockstep.
  *
- * Motion is driven by scrolling, not by a clock. At rest the wall drifts to a
- * stop and only breathes - a slow sway and pulse - so it is alive without
- * moving on its own. Scrolling accelerates it; a horizontal drag steers it and
- * can reverse it.
+ * Left alone the wall drifts slowly. Scrolling accelerates it and the input
+ * bleeds off back to that drift; a horizontal drag steers it and can reverse
+ * it. Nothing moves at a shared rate - each band has its own speed and each
+ * sprite its own variation on top, which is what reads as depth.
  *
  * Kept out of the component so the Three.js import stays dynamic: it is around
  * 700KB, and only this route should pay for it.
@@ -28,22 +28,50 @@ const BANDS: Band[] = [
   { speed: 70, opacity: 0.92, direction: 'bottomToTop' },
 ]
 
-/**
- * Sprites per band. Deliberately sparse - each band is a line of photos with
- * space around it, not a grid. Filling the viewport instead produces a solid
- * mosaic with no sense of depth.
- */
-const PER_BAND = 15
-
-/** Longest edge of a front-band sprite, before depth and jitter. */
-const TILE = 260
-
 /** Depth: bands further back are drawn smaller. */
 const DEPTH_SCALE = [1.0, 0.8, 0.65, 0.5]
 
 const MAX_SPEED = 5
-/** Per-frame decay, so the wall coasts to rest instead of running forever. */
+
+/** How quickly scroll input bleeds off toward the idle drift. */
 const FRICTION = 0.94
+
+/**
+ * The wall never fully stops - it drifts. Every band and every sprite carries
+ * its own multiplier on top of this, so the drift is a parallax rather than a
+ * uniform slide.
+ */
+const IDLE_SPEED = 0.55
+
+/**
+ * Fraction of the viewport the sprites should cover in total.
+ *
+ * How crowded the wall feels is a matter of area, not width. Sizing by width
+ * alone gave 181% coverage on a 1440x900 laptop and 64% on a 2560x1440
+ * desktop - the same tile against a much smaller area. Solving for area keeps
+ * it consistent on any screen.
+ */
+const TARGET_COVERAGE = 0.62
+
+/** Sum of the squared depth scales, since coverage is an area. */
+const DEPTH_AREA = DEPTH_SCALE.reduce((total, scale) => total + scale * scale, 0)
+
+/**
+ * Sprite size and count derived from the viewport.
+ *
+ * The count is tiered - a phone showing 60 sprites is busy however small they
+ * are - and the size is then solved so total coverage lands on target.
+ */
+function tuning(width: number, height: number) {
+  const perBand = width < 640 ? 8 : width < 1024 ? 11 : 15
+  const area = Math.max(width * height, 1)
+
+  const ideal = Math.sqrt((TARGET_COVERAGE * area) / (perBand * DEPTH_AREA))
+  // Clamped so a very small or very large viewport still gets a sane tile.
+  const tile = Math.round(Math.max(90, Math.min(320, ideal)))
+
+  return { tile, perBand, pixelRatio: width < 640 ? 1.5 : 2 }
+}
 
 export type WallHandle = {
   destroy: () => void
@@ -61,7 +89,9 @@ export async function createParallaxWall(
 
   const scene = new THREE.Scene()
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
+  renderer.setPixelRatio(
+    Math.min(window.devicePixelRatio, tuning(container.clientWidth, container.clientHeight).pixelRatio),
+  )
   container.appendChild(renderer.domElement)
 
   let camera = new THREE.OrthographicCamera(0, 1, 1, 0, -1000, 1000)
@@ -110,29 +140,32 @@ export async function createParallaxWall(
 
   const sprites: Sprite[] = []
   const geometry = new THREE.PlaneGeometry(1, 1)
+  let builtFor = 0
 
   const viewport = () => ({ w: container.clientWidth, h: container.clientHeight })
 
   function build() {
     const { w, h } = viewport()
+    const { tile, perBand } = tuning(w, h)
+    builtFor = w
 
     BANDS.forEach((band, bandIndex) => {
       const depth = DEPTH_SCALE[bandIndex]
       const horizontal = band.direction === 'rightToLeft' || band.direction === 'leftToRight'
 
-      for (let i = 0; i < PER_BAND; i += 1) {
+      for (let i = 0; i < perBand; i += 1) {
         const photo = nextPhoto()
         const ratio = photo.width / photo.height || 1
 
         // Slight per-sprite size jitter stops the band reading as a filmstrip.
         const jitter = rand(0.85, 1.15)
-        const size = TILE * depth * jitter
+        const size = tile * depth * jitter
         const sw = ratio > 1 ? size : size * ratio
         const sh = ratio > 1 ? size / ratio : size
 
         // Spaced along the axis of travel, scattered across the other one.
         const spacing = (horizontal ? sw : sh) * 1.6
-        const span = spacing * PER_BAND
+        const span = spacing * perBand
 
         const x = horizontal ? i * spacing : rand(sw / 2, Math.max(sw, w - sw / 2))
         const y = horizontal ? rand(sh / 2, Math.max(sh, h - sh / 2)) : i * spacing
@@ -169,8 +202,29 @@ export async function createParallaxWall(
   function resize() {
     const { w, h } = viewport()
     renderer.setSize(w, h, false)
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, tuning(w, h).pixelRatio))
     camera = new THREE.OrthographicCamera(0, w, h, 0, -1000, 1000)
     camera.position.z = 100
+
+    /*
+     * Sprite sizes and positions were computed for the old viewport. A small
+     * change does not matter, but a rotation or a jump across a breakpoint
+     * leaves them scattered off-screen or absurdly large, so rebuild.
+     */
+    if (builtFor && Math.abs(w - builtFor) > builtFor * 0.25) rebuild()
+  }
+
+  function teardownSprites() {
+    for (const sprite of sprites) {
+      scene.remove(sprite.mesh)
+      sprite.material.dispose()
+    }
+    sprites.length = 0
+  }
+
+  function rebuild() {
+    teardownSprites()
+    build()
   }
 
   /** Wrap a sprite to the far end of its band once it has fully left. */
@@ -260,9 +314,13 @@ export async function createParallaxWall(
     last = now
 
     if (!paused && document.visibilityState === 'visible') {
-      // Coast to a stop rather than running on a clock.
-      if (!dragging) speed *= FRICTION
-      if (Math.abs(speed) < 0.001) speed = 0
+      /*
+       * Ease back toward the idle drift rather than to zero. Scroll input
+       * still accelerates well past it and bleeds off, but the wall is never
+       * motionless - and because every band and sprite scales this by its own
+       * factor, the drift itself is a parallax rather than a uniform slide.
+       */
+      if (!dragging) speed += (IDLE_SPEED - speed) * (1 - FRICTION)
 
       for (const sprite of sprites) {
         const direction = BANDS[sprite.band].direction
@@ -322,11 +380,7 @@ export async function createParallaxWall(
        * the oldest silently, so leaking one per visit breaks the route after
        * a handful of navigations.
        */
-      for (const sprite of sprites) {
-        scene.remove(sprite.mesh)
-        sprite.material.dispose()
-      }
-      sprites.length = 0
+      teardownSprites()
 
       for (const texture of textureCache.values()) texture.dispose()
       textureCache.clear()

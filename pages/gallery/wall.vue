@@ -104,7 +104,13 @@ onBeforeUnmount(() => {
     <div v-if="status === 'running'" class="wall__hint">
       <p class="eyebrow">
         <span v-if="reducedMotion">Motion paused &middot; drag to move</span>
-        <span v-else>Scroll to move &middot; drag to steer &middot; double-click to reshuffle</span>
+        <template v-else>
+          <span class="hidden sm:inline">
+            Scroll to speed up &middot; drag to steer &middot; double-click to reshuffle
+          </span>
+          <!-- No wheel on touch, so do not advertise it. -->
+          <span class="sm:hidden">Drag to steer &middot; double-tap to reshuffle</span>
+        </template>
       </p>
     </div>
   </div>
