@@ -79,8 +79,8 @@ const loaded = ref(false)
       <img
         v-else
         :src="src(photo.publicId)"
-        :srcset="srcset(photo.publicId)"
-        sizes="100vw"
+        :srcset="srcset(photo.publicId, { maxWidth: 1920 })"
+        sizes="(min-width: 1600px) 1504px, 100vw"
         :alt="photo.alt"
         :width="photo.width"
         :height="photo.height"

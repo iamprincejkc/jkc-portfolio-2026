@@ -14,6 +14,49 @@
 /** Wider than this is wasted bandwidth for a web gallery. */
 const WIDTHS = [420, 640, 828, 1080, 1280, 1600, 1920, 2560]
 
+/**
+ * Column span of each tile in the feed, keyed by position in the repeating
+ * six-item rhythm. Must match the `.feed` grid in assets/css/main.css - if
+ * these drift apart the browser silently downloads the wrong size.
+ *
+ * [span below 1024px, span at 1024px and above], out of 12.
+ */
+const TILE_SPANS: [number, number][] = [
+  [7, 7], // 6n+1
+  [5, 5], // 6n+2
+  [5, 4], // 6n+3
+  [7, 8], // 6n+4
+  [6, 6], // 6n+5
+  [6, 6], // 6n+6
+]
+
+/** Container max-width minus its horizontal padding, at the large breakpoint. */
+const CONTENT_MAX = 1600 - 96
+
+/**
+ * A `sizes` value matching what the tile will actually occupy.
+ *
+ * This matters more than any transformation setting: `sizes` is the browser's
+ * only input when choosing from `srcset`, and over-declaring it makes every
+ * image bigger than it needs to be. A tile spanning 4 of 12 columns that
+ * claims 58vw fetches roughly three times the pixels it can display.
+ */
+export function tileSizes(index: number): string {
+  const [small, large] = TILE_SPANS[index % TILE_SPANS.length]
+  const largeVw = Math.round((large / 12) * 100)
+  const smallVw = Math.round((small / 12) * 100)
+  const cappedPx = Math.round((large / 12) * CONTENT_MAX)
+
+  return [
+    // Past the container's max width the tile stops growing, so vw would
+    // keep over-estimating.
+    `(min-width: 1600px) ${cappedPx}px`,
+    `(min-width: 1024px) ${largeVw}vw`,
+    `(min-width: 640px) ${smallVw}vw`,
+    '100vw',
+  ].join(', ')
+}
+
 export function useCloudinaryImage() {
   const cloudName = useRuntimeConfig().public.cloudinaryCloudName as string
 
@@ -22,15 +65,40 @@ export function useCloudinaryImage() {
     return `https://res.cloudinary.com/${cloudName}/${kind}/upload/${transforms.join(',')}/${publicId}`
   }
 
-  function url(publicId: string, width: number, extra?: string): string {
-    const transforms = ['f_auto', 'q_auto', 'c_limit', `w_${width}`, 'fl_progressive']
-    if (extra) transforms.push(extra)
+  /**
+   * `quality` maps to Cloudinary's automatic tiers rather than a fixed number,
+   * so it adapts per image instead of over-compressing flat ones and
+   * under-compressing detailed ones.
+   *
+   * `eco` is used for grid tiles: at thumbnail size the difference from `good`
+   * is not visible, and it typically cuts 25-40% of the bytes. Full-size views
+   * stay on `good`, where it would be.
+   */
+  function url(
+    publicId: string,
+    width: number,
+    options: { quality?: 'good' | 'eco' | 'best'; extra?: string } = {},
+  ): string {
+    const transforms = [
+      'f_auto',
+      `q_auto:${options.quality ?? 'good'}`,
+      'c_limit',
+      `w_${width}`,
+      'fl_progressive',
+    ]
+    if (options.extra) transforms.push(options.extra)
     return base('image', transforms, publicId)
   }
 
-  function srcset(publicId: string): string {
+  function srcset(
+    publicId: string,
+    options: { quality?: 'good' | 'eco' | 'best'; maxWidth?: number } = {},
+  ): string {
     if (!cloudName) return ''
-    return WIDTHS.map((width) => `${url(publicId, width)} ${width}w`).join(', ')
+    const widths = options.maxWidth
+      ? WIDTHS.filter((w) => w <= options.maxWidth!)
+      : WIDTHS
+    return widths.map((width) => `${url(publicId, width, options)} ${width}w`).join(', ')
   }
 
   /** A sensible default source for browsers that ignore srcset. */

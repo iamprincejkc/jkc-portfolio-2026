@@ -47,6 +47,8 @@ async function confirmDelete(publicId: string, kind: 'image' | 'video') {
           class="h-14 w-20 shrink-0 overflow-hidden"
           :style="{ backgroundColor: photo.color }"
         >
+          <!-- 160px for an 80px slot: correct for 2x, and small enough that a
+               srcset ladder would cost more in markup than it saves. -->
           <img
             :src="posterFor(photo, 160)"
             alt=""

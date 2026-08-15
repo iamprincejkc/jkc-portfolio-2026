@@ -12,7 +12,7 @@ const props = withDefaults(
   { priority: false },
 )
 
-const { src, srcset, videoPoster, videoSrc } = useCloudinaryImage()
+const { url, srcset, videoPoster, videoSrc } = useCloudinaryImage()
 const loaded = ref(false)
 const video = ref<HTMLVideoElement | null>(null)
 
@@ -54,9 +54,9 @@ function pause() {
         <!-- Still image -->
         <img
           v-if="photo.kind === 'image'"
-          :src="src(photo.publicId)"
-          :srcset="srcset(photo.publicId)"
-          sizes="(min-width: 1024px) 58vw, (min-width: 640px) 50vw, 100vw"
+          :src="url(photo.publicId, 828, { quality: 'eco' })"
+          :srcset="srcset(photo.publicId, { quality: 'eco', maxWidth: 1600 })"
+          :sizes="tileSizes(index)"
           :alt="photo.alt"
           :width="photo.width"
           :height="photo.height"
