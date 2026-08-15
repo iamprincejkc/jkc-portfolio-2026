@@ -9,17 +9,13 @@ const error = ref('')
 const botField = ref('')
 
 /**
- * Posts to Netlify Forms.
+ * Posts to our own /api/contact.
  *
- * The form's shape is declared in the static public/forms.html so Netlify
- * provisions an endpoint at build time - it detects forms by scanning deployed
- * HTML, and an SSR page is rendered too late for that. Submissions land in the
- * Netlify dashboard under Forms, and can be forwarded to email there.
- *
- * The file was originally `__forms.html`. Netlify never registered the form,
- * and Cloudflare (which fronts this domain) was rewriting that URL's body with
- * a /cdn-cgi interstitial. Both problems point at the underscore prefix, so
- * the plain name is used instead.
+ * That endpoint sends the email through Resend and archives the submission to
+ * Netlify Forms afterwards. It previously posted to Netlify Forms directly and
+ * relied on a Netlify outgoing webhook to trigger the email - but that webhook
+ * never fired, and its delivery log is not inspectable from outside. Going
+ * direct removes the unreliable hop and makes the whole path testable.
  */
 async function submit(e: Event) {
   e.preventDefault()
@@ -29,32 +25,27 @@ async function submit(e: Event) {
   error.value = ''
 
   try {
-    const body = new URLSearchParams({
-      'form-name': 'contact',
-      'bot-field': botField.value,
-      name: form.value.name,
-      email: form.value.email,
-      message: form.value.message,
-    })
-
-    const response = await fetch('/forms.html', {
+    await $fetch('/api/contact', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: body.toString(),
+      body: {
+        name: form.value.name,
+        email: form.value.email,
+        message: form.value.message,
+        'bot-field': botField.value,
+      },
     })
-
-    if (!response.ok) throw new Error(`Netlify returned ${response.status}`)
 
     status.value = 'sent'
     form.value = { name: '', email: '', message: '' }
-  } catch (caught) {
+  } catch (caught: any) {
     // Never claim success on failure - the whole point of this section is that
-    // a message actually arrives.
+    // a message actually arrives. Surface the server's own reason when it gave
+    // one, since "fill in every field" is more useful than "could not send".
     status.value = 'error'
     error.value =
-      caught instanceof Error && caught.message.includes('404')
-        ? 'The form endpoint is not live yet. It works once deployed to Netlify.'
-        : 'Could not send. Please email me directly instead.'
+      caught?.data?.statusMessage ||
+      caught?.statusMessage ||
+      'Could not send. Please email me directly instead.'
   }
 }
 </script>
