@@ -13,8 +13,14 @@ const { data, pending } = useGalleryPhotos()
 const ALL = 'all'
 const active = ref(ALL)
 
-const photos = computed(() => data.value?.photos ?? [])
-const categories = computed(() => data.value?.categories ?? [])
+/*
+ * Video is stored but not displayed - see VISIBLE_KINDS. Categories are
+ * recounted from the filtered set rather than reusing the server's counts,
+ * which cover everything: a "landscape 6" chip that reveals four photos
+ * would just look broken.
+ */
+const photos = computed(() => (data.value?.photos ?? []).filter(isVisible))
+const categories = computed(() => categoriesFrom(photos.value))
 
 const visible = computed(() =>
   active.value === ALL

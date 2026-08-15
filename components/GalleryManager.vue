@@ -57,8 +57,21 @@ async function confirmDelete(publicId: string, kind: 'image' | 'video') {
         </div>
 
         <div class="min-w-0 flex-1">
-          <p class="truncate text-sm">{{ photo.title }}</p>
-          <p class="eyebrow truncate">{{ photo.tags.join(', ') || 'uncategorised' }}</p>
+          <p class="truncate text-sm">
+            {{ photo.title }}
+            <!-- Uploaded and stored, but filtered out of the public feed.
+                 Listed here so it stays deletable. -->
+            <span
+              v-if="!isVisible(photo)"
+              class="ml-2 align-middle text-[10px] uppercase tracking-widest text-text-muted"
+            >
+              hidden
+            </span>
+          </p>
+          <p class="eyebrow truncate">
+            {{ photo.kind === 'video' ? 'Video' : 'Photo' }} ·
+            {{ photo.tags.join(', ') || 'uncategorised' }}
+          </p>
         </div>
 
         <div v-if="confirming === photo.publicId" class="flex shrink-0 items-center gap-3">

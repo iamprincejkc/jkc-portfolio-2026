@@ -12,7 +12,9 @@ const key = computed(() => {
   return slugKey(Array.isArray(slug) ? slug : [slug].filter(Boolean) as string[])
 })
 
-const photos = computed(() => data.value?.photos ?? [])
+// Filtered so a hidden asset is not reachable by guessing its URL, and so
+// previous/next only walks what the feed actually shows.
+const photos = computed(() => (data.value?.photos ?? []).filter(isVisible))
 const index = computed(() => photos.value.findIndex((photo) => photo.slug.join('/') === key.value))
 const photo = computed(() => (index.value === -1 ? null : photos.value[index.value]))
 const previous = computed(() => (index.value > 0 ? photos.value[index.value - 1] : null))
