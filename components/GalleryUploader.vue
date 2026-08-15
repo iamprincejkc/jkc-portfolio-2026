@@ -30,9 +30,17 @@ const VIDEO_MIME = ['video/mp4', 'video/quicktime', 'video/webm']
 const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'heic', 'heif']
 const VIDEO_EXT = ['mp4', 'mov', 'webm', 'm4v']
 
-/** Video is an order of magnitude larger; one cap for both would be wrong. */
-const MAX_IMAGE_BYTES = 25 * 1024 * 1024
-const MAX_VIDEO_BYTES = 200 * 1024 * 1024
+/*
+ * Cloudinary's own limits, not arbitrary choices. The free tier rejects images
+ * over 10MB and video over 100MB, and it does so *after* the whole file has
+ * uploaded - so checking here saves a long wait ending in a confusing error.
+ *
+ * Oversized photos are downscaled before this check rather than rejected: see
+ * prepareImageForUpload. The cap is the backstop for what cannot be
+ * downscaled, which in practice means HEIC on Chrome and Firefox.
+ */
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024
 
 const CONCURRENCY = 3
 
@@ -76,6 +84,8 @@ type Item = {
   progress: number
   status: Status
   error?: string
+  /** e.g. "resized 15.0 MB to 1.4 MB". */
+  note?: string
 }
 
 const input = ref<HTMLInputElement | null>(null)
@@ -112,9 +122,13 @@ function addFiles(files: FileList | File[]) {
       continue
     }
 
-    const cap = kind === 'video' ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES
-    if (file.size > cap) {
-      rejected.push(`${file.name} (over ${formatBytes(cap)})`)
+    /*
+     * Video is checked now because nothing can shrink it here. Photos are
+     * checked after downscaling instead - rejecting a 15MB original that
+     * would have become 1.5MB would be wrong.
+     */
+    if (kind === 'video' && file.size > MAX_VIDEO_BYTES) {
+      rejected.push(`${file.name} (over ${formatBytes(MAX_VIDEO_BYTES)})`)
       continue
     }
 
@@ -166,6 +180,26 @@ async function uploadOne(item: Item): Promise<boolean> {
     .filter(Boolean)
     .slice(0, 8)
 
+  /*
+   * Downscale before uploading. The gallery never serves wider than 2560px,
+   * so a larger original is bytes nobody sees - and Cloudinary would reject it
+   * anyway, only after the whole upload had finished.
+   */
+  let upload = item.file
+  if (item.kind === 'image') {
+    const prepared = await prepareImageForUpload(item.file)
+    upload = prepared.file
+    if (prepared.changed) {
+      item.note = `resized ${formatBytes(prepared.originalBytes)} to ${formatBytes(upload.size)}`
+    }
+  }
+
+  if (item.kind === 'image' && upload.size > MAX_IMAGE_BYTES) {
+    item.status = 'error'
+    item.error = `Still ${formatBytes(upload.size)} after resizing; Cloudinary's limit is ${formatBytes(MAX_IMAGE_BYTES)}. Convert it to JPEG first.`
+    return false
+  }
+
   // Only still images the browser can decode yield a colour. Video and HEIC
   // fall back to the neutral placeholder, which dominantColor already returns.
   const color = item.kind === 'image' && item.previewUrl ? await dominantColor(item.file) : ''
@@ -197,7 +231,7 @@ async function uploadOne(item: Item): Promise<boolean> {
   }
 
   const form = new FormData()
-  form.append('file', item.file)
+  form.append('file', upload)
   form.append('api_key', ticket.apiKey)
   form.append('signature', ticket.signature)
   // Send back exactly what the server signed - any extra signed parameter
@@ -438,6 +472,9 @@ async function uploadAll() {
             </div>
 
             <p v-if="item.error" class="text-xs text-text-muted">{{ item.error }}</p>
+            <!-- Say when a photo was downscaled, rather than silently
+                 uploading something different from what was chosen. -->
+            <p v-else-if="item.note" class="text-xs text-text-muted">{{ item.note }}</p>
           </div>
         </li>
       </ul>
