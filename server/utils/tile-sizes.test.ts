@@ -3,17 +3,45 @@ import { tileSizes } from '../../composables/useCloudinaryImage'
 
 /**
  * `sizes` is the browser's only input when picking from `srcset`, so a wrong
- * value silently wastes bandwidth on every single tile. These lock it to the
- * grid defined in assets/css/main.css - if that grid changes and this does
- * not, the mismatch should fail here rather than quietly cost megabytes.
+ * value silently wastes bandwidth on every tile. These lock it to the grid in
+ * assets/css/main.css - if that grid changes and this does not, the mismatch
+ * should fail here rather than quietly cost megabytes.
  */
 describe('tileSizes', () => {
-  it('matches the six-item rhythm of the feed grid', () => {
-    // Spans out of 12 at >=1024px: 7, 5, 4, 8, 6, 6
+  it('matches the two-across rhythm from 1024px', () => {
+    // Spans out of 12: 7, 5, 4, 8, 6, 6
     const expected = [58, 42, 33, 67, 50, 50]
     expected.forEach((vw, index) => {
       expect(tileSizes(index)).toContain(`(min-width: 1024px) ${vw}vw`)
     })
+  })
+
+  it('matches the three-across rhythm from 1536px', () => {
+    // Spans out of 12: 5, 4, 3, 4, 3, 5 - two rows of three
+    const expected = [42, 33, 25, 33, 25, 42]
+    expected.forEach((vw, index) => {
+      expect(tileSizes(index)).toContain(`(min-width: 1536px) ${vw}vw`)
+    })
+  })
+
+  it('declares narrower tiles at 1536px than at 1024px', () => {
+    // Three across means smaller tiles. If a breakpoint ever declared a wider
+    // value than the one below it, something is inverted.
+    for (let i = 0; i < 6; i += 1) {
+      const s = tileSizes(i)
+      const xl = Number(s.match(/\(min-width: 1536px\) (\d+)vw/)![1])
+      const lg = Number(s.match(/\(min-width: 1024px\) (\d+)vw/)![1])
+      expect(xl).toBeLessThanOrEqual(lg)
+    }
+  })
+
+  it('orders media conditions widest-first', () => {
+    // `sizes` is first-match-wins, so a narrower condition listed first would
+    // shadow every wider one.
+    const widths = [...tileSizes(0).matchAll(/\(min-width: (\d+)px\)/g)].map((m) =>
+      Number(m[1]),
+    )
+    expect(widths).toEqual([...widths].sort((a, b) => b - a))
   })
 
   it('repeats every six tiles', () => {
@@ -24,8 +52,6 @@ describe('tileSizes', () => {
   })
 
   it('caps in pixels past the container max width', () => {
-    // Beyond 1600px the container stops growing, so vw would keep
-    // over-estimating and pull a larger source than can ever be displayed.
     expect(tileSizes(0)).toMatch(/^\(min-width: 1600px\) \d+px,/)
   })
 
@@ -36,12 +62,19 @@ describe('tileSizes', () => {
   })
 
   it('never claims more than the widest possible tile', () => {
-    // 8 of 12 columns is the largest span in the rhythm. Anything above that
-    // would mean the grid and this helper have drifted apart.
     for (let i = 0; i < 12; i += 1) {
       const vw = Number(tileSizes(i).match(/\(min-width: 1024px\) (\d+)vw/)![1])
       expect(vw).toBeLessThanOrEqual(67)
       expect(vw).toBeGreaterThan(0)
     }
+  })
+
+  it('sums each three-across row to a full 12 columns', () => {
+    // Rows that do not sum to 12 leave a hole or wrap, which is the whole
+    // reason the ratios were pinned in the first place.
+    const vwToSpan = (i: number) =>
+      Math.round((Number(tileSizes(i).match(/\(min-width: 1536px\) (\d+)vw/)![1]) / 100) * 12)
+    expect(vwToSpan(0) + vwToSpan(1) + vwToSpan(2)).toBe(12)
+    expect(vwToSpan(3) + vwToSpan(4) + vwToSpan(5)).toBe(12)
   })
 })

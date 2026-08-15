@@ -19,15 +19,16 @@ const WIDTHS = [420, 640, 828, 1080, 1280, 1600, 1920, 2560]
  * six-item rhythm. Must match the `.feed` grid in assets/css/main.css - if
  * these drift apart the browser silently downloads the wrong size.
  *
- * [span below 1024px, span at 1024px and above], out of 12.
+ * [640-1023px, 1024-1535px, 1536px and above], out of 12.
+ * The last tier is three across; the others are two.
  */
-const TILE_SPANS: [number, number][] = [
-  [7, 7], // 6n+1
-  [5, 5], // 6n+2
-  [5, 4], // 6n+3
-  [7, 8], // 6n+4
-  [6, 6], // 6n+5
-  [6, 6], // 6n+6
+const TILE_SPANS: [number, number, number][] = [
+  [7, 7, 5], // 6n+1
+  [5, 5, 4], // 6n+2
+  [5, 4, 3], // 6n+3
+  [7, 8, 4], // 6n+4
+  [6, 6, 3], // 6n+5
+  [6, 6, 5], // 6n+6
 ]
 
 /** Container max-width minus its horizontal padding, at the large breakpoint. */
@@ -42,17 +43,18 @@ const CONTENT_MAX = 1600 - 96
  * claims 58vw fetches roughly three times the pixels it can display.
  */
 export function tileSizes(index: number): string {
-  const [small, large] = TILE_SPANS[index % TILE_SPANS.length]
-  const largeVw = Math.round((large / 12) * 100)
-  const smallVw = Math.round((small / 12) * 100)
-  const cappedPx = Math.round((large / 12) * CONTENT_MAX)
+  const [small, large, xl] = TILE_SPANS[index % TILE_SPANS.length]
+
+  const vw = (span: number) => Math.round((span / 12) * 100)
+  // Past the container's max width the tile stops growing, so vw would keep
+  // over-estimating. Uses the three-across span, which is what applies there.
+  const cappedPx = Math.round((xl / 12) * CONTENT_MAX)
 
   return [
-    // Past the container's max width the tile stops growing, so vw would
-    // keep over-estimating.
     `(min-width: 1600px) ${cappedPx}px`,
-    `(min-width: 1024px) ${largeVw}vw`,
-    `(min-width: 640px) ${smallVw}vw`,
+    `(min-width: 1536px) ${vw(xl)}vw`,
+    `(min-width: 1024px) ${vw(large)}vw`,
+    `(min-width: 640px) ${vw(small)}vw`,
     '100vw',
   ].join(', ')
 }

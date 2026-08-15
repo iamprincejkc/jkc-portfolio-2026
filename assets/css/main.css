@@ -289,6 +289,40 @@ html.lenis body {
 }
 
 /*
+   Three across on large displays
+   -----------------------------
+   At 2-up past ~1500px each tile becomes uncomfortably large. The six-item
+   rhythm becomes two rows of three instead:
+
+     row A   spans 5 + 4 + 3   at height 0.30w  ->  1.39, 1.11, 0.83
+     row B   spans 4 + 3 + 5   at height 0.34w  ->  0.98, 0.74, 1.23
+
+   Widths still vary so the grid keeps its cadence, and the ratios stay
+   proportional to the widths so each row closes flush.
+
+   1536px rather than 1280: a 1440 laptop still looks right at 2-up, and going
+   3-up there would make the tiles small rather than better.
+
+   TILE_SPANS in composables/useCloudinaryImage.ts mirrors these spans. If they
+   drift apart the browser silently downloads the wrong size - the tests pin it.
+*/
+@media (min-width: 1536px) {
+  .feed > *:nth-child(6n + 1) { grid-column: span 5; }
+  .feed > *:nth-child(6n + 2) { grid-column: span 4; }
+  .feed > *:nth-child(6n + 3) { grid-column: span 3; }
+  .feed > *:nth-child(6n + 4) { grid-column: span 4; }
+  .feed > *:nth-child(6n + 5) { grid-column: span 3; }
+  .feed > *:nth-child(6n + 6) { grid-column: span 5; }
+
+  .feed > *:nth-child(6n + 1) .frame { aspect-ratio: 1.39; }
+  .feed > *:nth-child(6n + 2) .frame { aspect-ratio: 1.11; }
+  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.83; }
+  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 0.98; }
+  .feed > *:nth-child(6n + 5) .frame { aspect-ratio: 0.74; }
+  .feed > *:nth-child(6n + 6) .frame { aspect-ratio: 1.23; }
+}
+
+/*
    Captions sit below the image and can wrap to different line counts, which
    would reintroduce the misalignment the fixed ratios just removed. Reserving
    the two-line height keeps every row closing flush.
