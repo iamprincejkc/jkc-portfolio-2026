@@ -61,28 +61,44 @@ export default defineEventHandler(async (event) => {
    * worth knowing but not worth relying on.
    */
   const secret = String(config.authSecret ?? '')
-  const expected = String((scope === 'admin' ? config.adminPin : config.sitePin) ?? '')
+  const sitePin = String(config.sitePin ?? '')
+  const adminPin = String(config.adminPin ?? '')
 
-  if (!secret || secret.length < 32 || !expected) {
+  const required = scope === 'admin' ? adminPin : sitePin
+  if (!secret || secret.length < 32 || !required) {
     throw createError({
       statusCode: 503,
       statusMessage: 'The gallery is not configured yet.',
     })
   }
 
-  if (!safeEqual(pin, expected)) {
+  /*
+   * An admin outranks a viewer everywhere else in this system, so the admin
+   * PIN is accepted on the viewing gate too and simply grants the higher
+   * scope. Previously it was only checked at /gallery/admin, which meant the
+   * admin PIN was rejected at /gallery - confusing, and for no benefit.
+   *
+   * Both comparisons always run. Returning early on the first match would
+   * make the response time reveal which PIN was entered.
+   */
+  const matchesRequired = safeEqual(pin, required)
+  const matchesAdmin = adminPin ? safeEqual(pin, adminPin) : false
+
+  if (!matchesRequired && !matchesAdmin) {
     throw createError({ statusCode: 401, statusMessage: 'Incorrect PIN.' })
   }
 
+  const granted: Scope = matchesAdmin ? 'admin' : scope
+
   resetKey(key)
 
-  setCookie(event, SESSION_COOKIE, createSessionToken(scope, secret), {
+  setCookie(event, SESSION_COOKIE, createSessionToken(granted, secret), {
     httpOnly: true,
     sameSite: 'lax',
     secure: !import.meta.dev,
     path: '/',
-    maxAge: scope === 'admin' ? ADMIN_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS,
+    maxAge: granted === 'admin' ? ADMIN_SESSION_TTL_SECONDS : SESSION_TTL_SECONDS,
   })
 
-  return { ok: true, scope }
+  return { ok: true, scope: granted }
 })
