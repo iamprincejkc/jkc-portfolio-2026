@@ -14,47 +14,35 @@
 /** Wider than this is wasted bandwidth for a web gallery. */
 const WIDTHS = [420, 640, 828, 1080, 1280, 1600, 1920, 2560]
 
-/**
- * Column span of each tile, keyed by position in the repeating six-item
- * rhythm. Must match the `.feed` grid in assets/css/main.css - if these drift
- * apart the browser silently downloads the wrong size.
+/** Columns at each tier. The feed is uniform-width masonry, so a tile's
+ *  width depends only on how many columns there are - not on its position.
  *
- * Out of 12 columns. The tablet tier (640-1023px) is always two across; from
- * 1024px the viewer's density choice decides.
- */
-const TABLET_SPANS = [7, 5, 5, 7, 6, 6]
-
-const DESKTOP_SPANS: Record<'s' | 'm' | 'l', number[]> = {
-  l: [7, 5, 5, 7, 6, 6], // two across
-  m: [5, 4, 3, 4, 3, 5], // three across
-  s: [3, 3, 3, 3, 3, 3], // four across
-}
+ *  Must match the `.feed` column-count rules in assets/css/main.css. A drift
+ *  between them costs bandwidth silently, so the tests pin them together. */
+const COLUMNS: Record<'s' | 'm' | 'l', number> = { l: 2, m: 3, s: 4 }
+const TABLET_COLUMNS = 2
 
 /** Container max-width minus its horizontal padding, at the large breakpoint. */
 const CONTENT_MAX = 1600 - 96
 
 /**
- * A `sizes` value matching what the tile will actually occupy.
+ * A `sizes` value matching what a tile will actually occupy.
  *
  * This matters more than any transformation setting: `sizes` is the browser's
  * only input when choosing from `srcset`, and over-declaring it makes every
- * image bigger than it needs to be. A tile spanning 4 of 12 columns that
- * claims 58vw fetches roughly three times the pixels it can display.
+ * image bigger than it needs to be. A four-column tile that claims the
+ * two-column width fetches roughly four times the pixels it can display.
  */
-export function tileSizes(index: number, density: 's' | 'm' | 'l' = 'm'): string {
-  const position = index % 6
-  const tablet = TABLET_SPANS[position]
-  const desktop = DESKTOP_SPANS[density][position]
-
-  const vw = (span: number) => Math.round((span / 12) * 100)
-  // Past the container's max width the tile stops growing, so vw would keep
-  // over-estimating.
-  const cappedPx = Math.round((desktop / 12) * CONTENT_MAX)
+export function tileSizes(density: 's' | 'm' | 'l' = 'm'): string {
+  const columns = COLUMNS[density]
+  const vw = (n: number) => Math.round(100 / n)
 
   return [
-    `(min-width: 1600px) ${cappedPx}px`,
-    `(min-width: 1024px) ${vw(desktop)}vw`,
-    `(min-width: 640px) ${vw(tablet)}vw`,
+    // Past the container's max width the tile stops growing, so vw would keep
+    // over-estimating.
+    `(min-width: 1600px) ${Math.round(CONTENT_MAX / columns)}px`,
+    `(min-width: 1024px) ${vw(columns)}vw`,
+    `(min-width: 640px) ${vw(TABLET_COLUMNS)}vw`,
     '100vw',
   ].join(', ')
 }

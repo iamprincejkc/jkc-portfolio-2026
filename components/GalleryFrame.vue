@@ -60,7 +60,7 @@ function pause() {
           v-if="photo.kind === 'image'"
           :src="url(photo.publicId, 828, { quality: 'eco' })"
           :srcset="srcset(photo.publicId, { quality: 'eco', maxWidth: 1600 })"
-          :sizes="tileSizes(index, props.density)"
+          :sizes="tileSizes(props.density)"
           :alt="photo.alt"
           :width="photo.width"
           :height="photo.height"
