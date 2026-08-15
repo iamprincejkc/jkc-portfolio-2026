@@ -1,4 +1,12 @@
-import { renderContactEmail, renderContactText, type ContactMessage } from '../utils/contact-email'
+import {
+  formatReceived,
+  renderAutoReply,
+  renderAutoReplyText,
+  renderContactEmail,
+  renderContactText,
+  subjectSnippet,
+  type ContactMessage,
+} from '../utils/contact-email'
 import { consume } from '../utils/rate-limit'
 
 /**
@@ -69,7 +77,9 @@ export default defineEventHandler(async (event) => {
     name,
     email,
     message,
-    receivedAt: new Date().toUTCString(),
+    // Rendered in JKC's own timezone; toUTCString would show GMT, which is
+    // never the time he actually received it.
+    receivedAt: formatReceived(new Date()),
     siteUrl: String(config.public.siteUrl ?? 'https://iamjkc.space'),
   }
 
@@ -80,7 +90,8 @@ export default defineEventHandler(async (event) => {
       body: {
         from,
         to: [to],
-        subject: `${name} sent you a message`,
+        // Carry a snippet so the inbox list says what the message is about.
+        subject: `${name}: ${subjectSnippet(message)}`,
         html: renderContactEmail(payload),
         text: renderContactText(payload),
         // Replying reaches the sender rather than our own address.
@@ -95,6 +106,33 @@ export default defineEventHandler(async (event) => {
       statusCode: 502,
       statusMessage: 'Could not send your message. Please email me directly.',
     })
+  }
+
+  /*
+   * Confirmation back to the sender. Best effort: they already got a "sent"
+   * in the UI and the real message is delivered, so a failure here is not
+   * worth turning into an error for either party.
+   *
+   * Note this is an unverified address - anyone can put someone else's email
+   * in the form and cause one message from this domain. The per-IP limit above
+   * is what keeps that from being useful for amplification.
+   */
+  try {
+    await $fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${apiKey}` },
+      body: {
+        from,
+        to: [email],
+        subject: 'Thanks for getting in touch',
+        html: renderAutoReply(payload),
+        text: renderAutoReplyText(payload),
+        // If they reply to the confirmation, it should reach a person.
+        reply_to: to,
+      },
+    })
+  } catch (error) {
+    console.error('[contact] Could not send the confirmation:', error)
   }
 
   /*
