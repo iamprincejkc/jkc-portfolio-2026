@@ -67,6 +67,16 @@ export default defineNuxtConfig({
      */
     lastfmApiKey: '',
     lastfmUser: '',
+    /*
+     * Contact email. Netlify's own notification cannot be templated, so the
+     * form webhook is received and the email sent from our own domain.
+     * The webhook secret is required - without it the endpoint is an open
+     * relay - so the handler refuses to send when any of these is missing.
+     */
+    netlifyWebhookSecret: '',
+    resendApiKey: '',
+    contactToEmail: '',
+    contactFromEmail: '',
     public: {
       // The cloud name appears in every image URL, so it is public by nature.
       cloudinaryCloudName: '',
