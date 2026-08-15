@@ -1,22 +1,30 @@
 /**
- * Now playing, straight from the Spotify Web API.
+ * Now playing, via Last.fm scrobbles.
  *
- * Replaces a third-party widget whose shared OAuth token kept getting revoked -
- * it returned `200 text/html` with an error string in place of an SVG, so the
- * browser painted a broken image in the middle of the hero.
+ * Spotify's Web API is gated behind Premium on this account, and the
+ * third-party widget it replaced kept having its shared OAuth token revoked -
+ * signalling failure with `200 text/html`, so the browser painted a broken
+ * image in the hero. Last.fm needs only a read-only API key, works on a free
+ * Spotify tier, and has no token to expire.
  *
- * Here the refresh token is ours and lives in server config. The browser only
- * ever receives track name, artist and cover art; no credential is exposed.
+ * Trade-off: Last.fm reports the most recent *scrobble*. A track is normally
+ * scrobbled part-way through, and `nowplaying` is only set while Spotify is
+ * actively reporting, so this usually reads "Last played" rather than live
+ * playback. There is no progress or duration in this response.
  */
 
-type SpotifyImage = { url: string; width: number; height: number }
+/** Last.fm returns this hash for "no artwork", not an empty string. */
+const PLACEHOLDER_ART = '2a96cbd8b46e442fc41c2b86b821562f'
 
-type SpotifyTrack = {
+type LastfmImage = { '#text': string; size: 'small' | 'medium' | 'large' | 'extralarge' }
+
+type LastfmTrack = {
   name: string
-  artists: { name: string }[]
-  album: { name: string; images: SpotifyImage[] }
-  external_urls: { spotify: string }
-  duration_ms: number
+  url: string
+  artist: { '#text': string }
+  album: { '#text': string }
+  image: LastfmImage[]
+  '@attr'?: { nowplaying?: string }
 }
 
 export type NowPlaying =
@@ -31,132 +39,83 @@ export type NowPlaying =
         album: string
         albumArt: string | null
         url: string
-        progressMs: number
-        durationMs: number
       }
     }
 
 /*
- * An access token is good for an hour. Minting one per request would triple the
- * latency of the card and burn rate limit for nothing, so it is held in module
- * scope. Per-instance, which is exactly the right lifetime here.
+ * Last.fm allows roughly 5 requests/second per key. The card polls every 30s
+ * per visitor, so a burst of traffic could add up. Caching in module scope
+ * collapses all of it to one upstream call per instance per window.
  */
-let cachedToken: { value: string; expiresAt: number } | null = null
-
-/** Spotify's rate limit is per-app; the card does not need second-by-second truth. */
 const RESPONSE_TTL_MS = 20_000
-let cachedResponse: { value: NowPlaying; at: number } | null = null
+let cached: { value: NowPlaying; at: number } | null = null
 
-async function getAccessToken(
-  clientId: string,
-  clientSecret: string,
-  refreshToken: string,
-): Promise<string> {
-  if (cachedToken && cachedToken.expiresAt > Date.now() + 30_000) {
-    return cachedToken.value
+function pickArt(images: LastfmImage[] | undefined): string | null {
+  if (!Array.isArray(images)) return null
+  const order: LastfmImage['size'][] = ['extralarge', 'large', 'medium', 'small']
+  for (const size of order) {
+    const url = images.find((i) => i.size === size)?.['#text']
+    if (url && !url.includes(PLACEHOLDER_ART)) return url
   }
-
-  const basic = Buffer.from(`${clientId}:${clientSecret}`).toString('base64')
-
-  const data = await $fetch<{ access_token: string; expires_in: number }>(
-    'https://accounts.spotify.com/api/token',
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${basic}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({
-        grant_type: 'refresh_token',
-        refresh_token: refreshToken,
-      }).toString(),
-    },
-  )
-
-  cachedToken = {
-    value: data.access_token,
-    expiresAt: Date.now() + data.expires_in * 1000,
-  }
-  return cachedToken.value
-}
-
-function shape(track: SpotifyTrack, playing: boolean, progressMs: number): NowPlaying {
-  // Images come largest-first; the card is small, so take the smallest that is
-  // still bigger than the rendered size.
-  const images = [...(track.album.images ?? [])].sort((a, b) => a.width - b.width)
-  const art = images.find((i) => i.width >= 160) ?? images.at(-1) ?? null
-
-  return {
-    configured: true,
-    playing,
-    track: {
-      title: track.name,
-      artist: track.artists.map((a) => a.name).join(', '),
-      album: track.album.name,
-      albumArt: art?.url ?? null,
-      url: track.external_urls.spotify,
-      progressMs,
-      durationMs: track.duration_ms,
-    },
-  }
+  return null
 }
 
 export default defineEventHandler(async (event): Promise<NowPlaying> => {
   const config = useRuntimeConfig()
 
   // Coerced: Nuxt parses env with `destr`, so values are not guaranteed strings.
-  const clientId = String(config.spotifyClientId ?? '')
-  const clientSecret = String(config.spotifyClientSecret ?? '')
-  const refreshToken = String(config.spotifyRefreshToken ?? '')
+  const apiKey = String(config.lastfmApiKey ?? '')
+  const user = String(config.lastfmUser ?? '')
 
   // Not an error - the hero simply omits the card until this is set up.
-  if (!clientId || !clientSecret || !refreshToken) {
-    return { configured: false }
-  }
+  if (!apiKey || !user) return { configured: false }
 
-  if (cachedResponse && Date.now() - cachedResponse.at < RESPONSE_TTL_MS) {
+  if (cached && Date.now() - cached.at < RESPONSE_TTL_MS) {
     setResponseHeader(event, 'cache-control', 'public, max-age=20')
-    return cachedResponse.value
+    return cached.value
   }
 
   try {
-    const token = await getAccessToken(clientId, clientSecret, refreshToken)
-    const auth = { Authorization: `Bearer ${token}` }
+    const data = await $fetch<{ recenttracks?: { track?: LastfmTrack[] | LastfmTrack } }>(
+      'https://ws.audioscrobbler.com/2.0/',
+      {
+        query: {
+          method: 'user.getrecenttracks',
+          user,
+          api_key: apiKey,
+          format: 'json',
+          limit: 1,
+        },
+        // Never let a slow upstream hold the page render hostage.
+        timeout: 6000,
+      },
+    )
 
-    // 204 No Content means nothing is playing right now.
-    const current = await $fetch<{
-      is_playing: boolean
-      progress_ms: number
-      item: SpotifyTrack | null
-    } | null>('https://api.spotify.com/v1/me/player/currently-playing', {
-      headers: auth,
-      // Podcasts and local files come back without a usable track shape.
-      query: { additional_types: 'track' },
-    }).catch(() => null)
+    // The API returns an object rather than an array when limit resolves to one.
+    const raw = data.recenttracks?.track
+    const track = Array.isArray(raw) ? raw[0] : raw
 
-    let result: NowPlaying
+    const result: NowPlaying = track
+      ? {
+          configured: true,
+          playing: track['@attr']?.nowplaying === 'true',
+          track: {
+            title: track.name,
+            artist: track.artist?.['#text'] ?? '',
+            album: track.album?.['#text'] ?? '',
+            albumArt: pickArt(track.image),
+            url: track.url,
+          },
+        }
+      : { configured: true, playing: false, track: null }
 
-    if (current?.item) {
-      result = shape(current.item, current.is_playing, current.progress_ms ?? 0)
-    } else {
-      // Fall back to the last thing played, so the card says something real
-      // rather than disappearing whenever the music stops.
-      const recent = await $fetch<{ items: { track: SpotifyTrack }[] }>(
-        'https://api.spotify.com/v1/me/player/recently-played',
-        { headers: auth, query: { limit: 1 } },
-      ).catch(() => null)
-
-      const track = recent?.items?.[0]?.track
-      result = track ? shape(track, false, 0) : { configured: true, playing: false, track: null }
-    }
-
-    cachedResponse = { value: result, at: Date.now() }
+    cached = { value: result, at: Date.now() }
     setResponseHeader(event, 'cache-control', 'public, max-age=20')
     return result
   } catch (error) {
-    console.error('[now-playing] Spotify request failed:', error)
+    console.error('[now-playing] Last.fm request failed:', error)
     // Serve stale rather than flashing the card away on a blip.
-    if (cachedResponse) return cachedResponse.value
+    if (cached) return cached.value
     return { configured: true, playing: false, track: null }
   }
 })

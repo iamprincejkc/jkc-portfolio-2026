@@ -28,8 +28,8 @@ export default defineNuxtConfig({
          */
         { rel: 'preconnect', href: 'https://api.fontshare.com' },
         { rel: 'preconnect', href: 'https://cdn.fontshare.com', crossorigin: '' },
-        // Spotify album art for the now-playing card.
-        { rel: 'dns-prefetch', href: 'https://i.scdn.co' },
+        // Last.fm album art for the now-playing card.
+        { rel: 'dns-prefetch', href: 'https://lastfm.freetls.fastly.net' },
         {
           rel: 'stylesheet',
           href: 'https://api.fontshare.com/v2/css?f[]=general-sans@500,600,400&f[]=melodrama@500,400&display=swap',
@@ -60,10 +60,13 @@ export default defineNuxtConfig({
     cloudinaryApiKey: '',
     cloudinaryApiSecret: '',
     cloudinaryFolder: 'gallery',
-    // Spotify now-playing. All server-side: the browser never sees a token.
-    spotifyClientId: '',
-    spotifyClientSecret: '',
-    spotifyRefreshToken: '',
+    /*
+     * Last.fm now-playing. Server-side so the API key is never shipped to the
+     * browser. Spotify's own Web API needs Premium, which this account does
+     * not have, so scrobbles are the read path instead.
+     */
+    lastfmApiKey: '',
+    lastfmUser: '',
     public: {
       // The cloud name appears in every image URL, so it is public by nature.
       cloudinaryCloudName: '',
