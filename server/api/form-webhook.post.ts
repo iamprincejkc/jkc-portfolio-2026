@@ -1,5 +1,5 @@
-import { createHmac, timingSafeEqual, createHash } from 'node:crypto'
 import { renderContactEmail, renderContactText, type ContactMessage } from '../utils/contact-email'
+import { verifyWebhookSignature } from '../utils/webhook-signature'
 import { consume } from '../utils/rate-limit'
 
 /**
@@ -22,39 +22,6 @@ type NetlifyFormPayload = {
   created_at?: string
   site_url?: string
   data?: Record<string, unknown>
-}
-
-function base64urlToBuffer(input: string): Buffer {
-  return Buffer.from(input.replace(/-/g, '+').replace(/_/g, '/'), 'base64')
-}
-
-/**
- * Verify Netlify's `x-webhook-signature`: an HS256 JWS whose payload carries a
- * SHA-256 of the request body. Both the signature and the body hash are
- * checked - the signature alone would let a valid token be replayed against
- * different content.
- */
-function verifySignature(token: string, secret: string, rawBody: string): boolean {
-  const parts = token.split('.')
-  if (parts.length !== 3) return false
-
-  const [header, payload, signature] = parts
-
-  const expected = createHmac('sha256', secret).update(`${header}.${payload}`).digest()
-  const actual = base64urlToBuffer(signature)
-  if (actual.length !== expected.length || !timingSafeEqual(actual, expected)) return false
-
-  try {
-    const claims = JSON.parse(base64urlToBuffer(payload).toString('utf8')) as { sha256?: string }
-    if (!claims.sha256) return false
-
-    const bodyHash = createHash('sha256').update(rawBody).digest('hex')
-    const a = Buffer.from(claims.sha256, 'hex')
-    const b = Buffer.from(bodyHash, 'hex')
-    return a.length === b.length && timingSafeEqual(a, b)
-  } catch {
-    return false
-  }
 }
 
 function text(value: unknown, max: number): string {
@@ -84,7 +51,7 @@ export default defineEventHandler(async (event) => {
   if (!rawBody) throw createError({ statusCode: 400, statusMessage: 'Empty body.' })
 
   const token = getRequestHeader(event, 'x-webhook-signature')
-  if (!token || !verifySignature(token, secret, rawBody)) {
+  if (!token || !verifyWebhookSignature(token, secret, rawBody)) {
     throw createError({ statusCode: 401, statusMessage: 'Bad signature.' })
   }
 
