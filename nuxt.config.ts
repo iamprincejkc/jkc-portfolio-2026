@@ -68,12 +68,10 @@ export default defineNuxtConfig({
     lastfmApiKey: '',
     lastfmUser: '',
     /*
-     * Contact email. Netlify's own notification cannot be templated, so the
-     * form webhook is received and the email sent from our own domain.
-     * The webhook secret is required - without it the endpoint is an open
-     * relay - so the handler refuses to send when any of these is missing.
+     * Contact email. The form posts to /api/contact, which sends through
+     * Resend from our own domain and archives to Netlify Forms afterwards.
+     * All three are required; the endpoint answers 503 rather than half-work.
      */
-    netlifyWebhookSecret: '',
     resendApiKey: '',
     contactToEmail: '',
     contactFromEmail: '',
