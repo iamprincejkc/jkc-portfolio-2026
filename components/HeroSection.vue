@@ -17,6 +17,7 @@ const offsets: { x: number; y: number; r: number }[] = tiles.map(() => ({
 
 const isAssembled = ref(false)
 
+
 onMounted(() => {
   const { $gsap } = useNuxtApp() as any
   if (!$gsap || !heroRef.value || !tilesRef.value) return
@@ -109,21 +110,14 @@ onBeforeUnmount(() => {})
         <span class="text-text-muted">@ OSL International</span>
       </p>
 
-      <div class="mt-8 max-w-[260px] flex flex-col items-end text-right">
-        <p class="text-text-muted text-sm mb-2">Currently listening</p>
-        <a
-          href="https://open.spotify.com/user/31jcy336e6umoa65pg75siec4cdq"
-          target="_blank"
-          rel="noopener"
-          class="inline-block hover:opacity-80 transition-opacity duration-fast"
-        >
-          <img
-            src="https://spotify-github-profile.kittinanx.com/api/view.svg?uid=31jcy336e6umoa65pg75siec4cdq&cover_image=true&theme=default&show_offline=true&background_color=1A1D23&interchange=true&bar_color=02f7db&bar_color_cover=true"
-            alt="Now playing on Spotify"
-            class="w-full h-auto rounded-xs"
-            loading="lazy"
-          />
-        </a>
+      <!--
+        Served from our own /api/now-playing rather than a third-party widget.
+        The old one shared an OAuth token that kept getting revoked, and it
+        signalled failure with 200 + text/html, so the browser painted a broken
+        image here. This renders nothing when Spotify is unconfigured.
+      -->
+      <div class="mt-8 flex flex-col items-end text-right">
+        <NowPlaying />
       </div>
     </div>
 
@@ -285,8 +279,16 @@ onBeforeUnmount(() => {})
 }
 
 /* --- Mobile --- */
-/* --- Mobile: switch to a clean vertical stack --- */
-@media (max-width: 767px) {
+/*
+ * Switch to a clean vertical stack below the desktop breakpoint.
+ *
+ * This must stop exactly where the desktop refinements start (min-width:
+ * 1024px). It previously ended at 767px, which left 768-1023px running the
+ * absolutely-positioned desktop composition without its desktop sizing: the
+ * name kept `max-width: 50vw`, so "Cadampog" overflowed its box and printed
+ * straight over the meta column.
+ */
+@media (max-width: 1023px) {
   .hero {
     padding-top: 5rem;
     padding-bottom: 2rem;

@@ -28,6 +28,8 @@ export default defineNuxtConfig({
          */
         { rel: 'preconnect', href: 'https://api.fontshare.com' },
         { rel: 'preconnect', href: 'https://cdn.fontshare.com', crossorigin: '' },
+        // Spotify album art for the now-playing card.
+        { rel: 'dns-prefetch', href: 'https://i.scdn.co' },
         {
           rel: 'stylesheet',
           href: 'https://api.fontshare.com/v2/css?f[]=general-sans@500,600,400&f[]=melodrama@500,400&display=swap',
@@ -58,6 +60,10 @@ export default defineNuxtConfig({
     cloudinaryApiKey: '',
     cloudinaryApiSecret: '',
     cloudinaryFolder: 'gallery',
+    // Spotify now-playing. All server-side: the browser never sees a token.
+    spotifyClientId: '',
+    spotifyClientSecret: '',
+    spotifyRefreshToken: '',
     public: {
       // The cloud name appears in every image URL, so it is public by nature.
       cloudinaryCloudName: '',
@@ -91,11 +97,14 @@ export default defineNuxtConfig({
     '/gallery/**': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
 
     /*
-     * Evently is a prebuilt Three.js bundle living in public/evently. The
-     * redirect makes the bare /evently resolve to its index.html rather than
-     * 404, which static hosts do implicitly but the dev server does not.
+     * Evently is a prebuilt Three.js bundle in public/evently, served as a
+     * static directory.
+     *
+     * Do NOT add a `/evently -> /evently/` redirect rule here. Nitro matches
+     * such a rule against both forms, so the slashed URL redirects to itself
+     * and the route becomes an infinite loop. Netlify resolves the directory
+     * index for the bare path on its own.
      */
-    '/evently': { redirect: { to: '/evently/', statusCode: 302 } },
   },
 
   nitro: {

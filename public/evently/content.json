@@ -4,7 +4,7 @@
   "startMessage": "Walk with the left side of the screen.\nLook around with the right.\n\nFind everything that glows.\nThe last one is waiting at the biggest tree.",
   "finaleTitle": "I LOVE YOU PAOLA",
   "finaleMessage": "someday we will be together.\n\nhabang hinihintay natin yun, eto muna.\nbuong gubat, para sayo.",
-  "music": { "file": "music/Ngiti.mp3", "volume": 0.3, "startMuted": true },
+  "music": { "file": "music/Ngiti.mp3", "volume": 0.3, "startMuted": false },
   "memories": [
     {
       "id": "heartopia",
