@@ -255,58 +255,53 @@ html.lenis body {
 /*
    Row alignment
    -------------
-   A grid row is as tall as its tallest item, so pairing a landscape with a
-   portrait leaves dead space under the shorter one. Natural aspect ratios
-   cannot tile.
+   A grid row is as tall as its tallest item, so pairing a landscape tile with
+   a portrait one leaves dead space under the shorter of the two.
 
-   Each position in the rhythm therefore gets a fixed aspect ratio, chosen so
-   both tiles in a row resolve to the same height:
+   Deriving the height from an aspect ratio cannot fix that once there are
+   column gaps: a tile's width is `span x column + (span - 1) x gap`, so width
+   is not proportional to span, and equal ratios give unequal heights. At 2560
+   the mismatch across one row was about 20px.
 
-     row A   spans 7 + 5   at height 0.42w   ->  1.39 and 0.99
-     row B   spans 4 + 8   at height 0.50w   ->  0.67 and 1.33
-     row C   spans 6 + 6   at height 0.38w   ->  1.32 and 1.32
+   So the height is set directly instead, identical for every tile in a row,
+   and the grid decides the widths. Rows then close flush by construction at
+   any viewport, whatever the gap. Units are cqw - a percentage of the feed's
+   own width - so this holds above the container's max-width too, where vw
+   would keep growing after the layout had stopped.
 
-   Different heights per row keep the page from turning into a uniform wall,
-   while every row still closes flush. Images cover-crop to fit; the detail
+   Row heights still differ from each other, so the page keeps its cadence
+   rather than becoming a uniform wall. Images cover-crop to fit; the detail
    view shows them uncropped.
 
-   Below 640px the feed is a single column, where nothing can misalign, so
+   Below 640px the feed is a single column where nothing can misalign, so
    tiles keep their true proportions there.
 */
-@media (min-width: 640px) {
-  .feed > * .frame { aspect-ratio: 1.19; }
-  .feed > *:nth-child(6n + 1) .frame { aspect-ratio: 1.39; }
-  .feed > *:nth-child(6n + 2) .frame { aspect-ratio: 0.99; }
-  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.99; }
-  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 1.39; }
+.feed {
+  container-type: inline-size;
 }
 
-@media (min-width: 1024px) {
-  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.67; }
-  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 1.33; }
+@media (min-width: 640px) {
+  /* Two across: rows of 7+5, 5+7, 6+6 */
+  .feed > *:nth-child(6n + 1) .frame,
+  .feed > *:nth-child(6n + 2) .frame { height: 42cqw; aspect-ratio: auto; }
+  .feed > *:nth-child(6n + 3) .frame,
+  .feed > *:nth-child(6n + 4) .frame { height: 40cqw; aspect-ratio: auto; }
   .feed > *:nth-child(6n + 5) .frame,
-  .feed > *:nth-child(6n + 6) .frame { aspect-ratio: 1.32; }
+  .feed > *:nth-child(6n + 6) .frame { height: 38cqw; aspect-ratio: auto; }
 }
 
 /*
-   Three across on large displays
-   -----------------------------
-   At 2-up past ~1500px each tile becomes uncomfortably large. The six-item
-   rhythm becomes two rows of three instead:
+   Three across on large displays. At 2-up past ~1500px each tile runs close to
+   1000px wide, which is more presence than any one frame in a feed needs.
 
-     row A   spans 5 + 4 + 3   at height 0.30w  ->  1.39, 1.11, 0.83
-     row B   spans 4 + 3 + 5   at height 0.34w  ->  0.98, 0.74, 1.23
+   1536px rather than 1280px: a 1440 laptop still reads well at two across, and
+   going three there would make tiles small rather than better.
 
-   Widths still vary so the grid keeps its cadence, and the ratios stay
-   proportional to the widths so each row closes flush.
-
-   1536px rather than 1280: a 1440 laptop still looks right at 2-up, and going
-   3-up there would make the tiles small rather than better.
-
-   TILE_SPANS in composables/useCloudinaryImage.ts mirrors these spans. If they
-   drift apart the browser silently downloads the wrong size - the tests pin it.
+   TILE_SPANS in composables/useCloudinaryImage.ts mirrors these spans - the
+   tests pin them together, because a drift costs bandwidth silently.
 */
 @media (min-width: 1536px) {
+  /* Rows of 5+4+3 and 4+3+5, each summing to 12 */
   .feed > *:nth-child(6n + 1) { grid-column: span 5; }
   .feed > *:nth-child(6n + 2) { grid-column: span 4; }
   .feed > *:nth-child(6n + 3) { grid-column: span 3; }
@@ -314,12 +309,12 @@ html.lenis body {
   .feed > *:nth-child(6n + 5) { grid-column: span 3; }
   .feed > *:nth-child(6n + 6) { grid-column: span 5; }
 
-  .feed > *:nth-child(6n + 1) .frame { aspect-ratio: 1.39; }
-  .feed > *:nth-child(6n + 2) .frame { aspect-ratio: 1.11; }
-  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.83; }
-  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 0.98; }
-  .feed > *:nth-child(6n + 5) .frame { aspect-ratio: 0.74; }
-  .feed > *:nth-child(6n + 6) .frame { aspect-ratio: 1.23; }
+  .feed > *:nth-child(6n + 1) .frame,
+  .feed > *:nth-child(6n + 2) .frame,
+  .feed > *:nth-child(6n + 3) .frame { height: 30cqw; }
+  .feed > *:nth-child(6n + 4) .frame,
+  .feed > *:nth-child(6n + 5) .frame,
+  .feed > *:nth-child(6n + 6) .frame { height: 34cqw; }
 }
 
 /*
