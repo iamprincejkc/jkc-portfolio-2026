@@ -47,7 +47,9 @@ function pause() {
       <div
         class="frame"
         :style="{
-          aspectRatio: `${photo.width} / ${photo.height}`,
+          // Natural ratio as a variable so the feed's breakpoints can override
+          // it without fighting an inline style.
+          '--photo-aspect': `${photo.width} / ${photo.height}`,
           backgroundColor: photo.color,
         }"
       >

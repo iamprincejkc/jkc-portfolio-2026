@@ -35,7 +35,7 @@ html.lenis body {
   height: auto;
 }
 .lenis.lenis-smooth {
-  scroll-behavior: auto !important;
+  scroll-behavior: auto;
 }
 .lenis.lenis-smooth [data-lenis-prevent] {
   overscroll-behavior: contain;
@@ -252,6 +252,54 @@ html.lenis body {
   .feed > *:nth-child(6n + 4) { grid-column: span 8; }
 }
 
+/*
+   Row alignment
+   -------------
+   A grid row is as tall as its tallest item, so pairing a landscape with a
+   portrait leaves dead space under the shorter one. Natural aspect ratios
+   cannot tile.
+
+   Each position in the rhythm therefore gets a fixed aspect ratio, chosen so
+   both tiles in a row resolve to the same height:
+
+     row A   spans 7 + 5   at height 0.42w   ->  1.39 and 0.99
+     row B   spans 4 + 8   at height 0.50w   ->  0.67 and 1.33
+     row C   spans 6 + 6   at height 0.38w   ->  1.32 and 1.32
+
+   Different heights per row keep the page from turning into a uniform wall,
+   while every row still closes flush. Images cover-crop to fit; the detail
+   view shows them uncropped.
+
+   Below 640px the feed is a single column, where nothing can misalign, so
+   tiles keep their true proportions there.
+*/
+@media (min-width: 640px) {
+  .feed > * .frame { aspect-ratio: 1.19; }
+  .feed > *:nth-child(6n + 1) .frame { aspect-ratio: 1.39; }
+  .feed > *:nth-child(6n + 2) .frame { aspect-ratio: 0.99; }
+  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.99; }
+  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 1.39; }
+}
+
+@media (min-width: 1024px) {
+  .feed > *:nth-child(6n + 3) .frame { aspect-ratio: 0.67; }
+  .feed > *:nth-child(6n + 4) .frame { aspect-ratio: 1.33; }
+  .feed > *:nth-child(6n + 5) .frame,
+  .feed > *:nth-child(6n + 6) .frame { aspect-ratio: 1.32; }
+}
+
+/*
+   Captions sit below the image and can wrap to different line counts, which
+   would reintroduce the misalignment the fixed ratios just removed. Reserving
+   the two-line height keeps every row closing flush.
+*/
+@media (min-width: 640px) {
+  .feed > * .frame-link > div:last-child {
+    min-height: 3.25rem;
+    align-items: start;
+  }
+}
+
 /* Offscreen tiles skip layout and paint until they approach the viewport.
    contain-intrinsic-size keeps the scrollbar honest meanwhile. Applied from
    the seventh tile so nothing above the fold is deferred. */
@@ -266,6 +314,9 @@ html.lenis body {
   position: relative;
   overflow: hidden;
   background: #141414;
+  /* Falls back to the asset's true proportions; the feed overrides this per
+     position so rows close flush. */
+  aspect-ratio: var(--photo-aspect, 3 / 2);
 }
 
 .frame img {
