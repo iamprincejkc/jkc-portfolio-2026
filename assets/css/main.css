@@ -235,6 +235,14 @@ html.lenis body {
   grid-template-columns: 1fr;
   gap: clamp(2.5rem, 6vw, 5rem) 1.5rem;
   align-items: start;
+
+  /*
+     Establishes the query container that every `cqw` tile height resolves
+     against. Without it those units fall back to the viewport, and past the
+     container's 1600px max-width the tiles would keep growing after the grid
+     had stopped - 42cqw would be 1075px tall at 2560 instead of 632px.
+  */
+  container-type: inline-size;
 }
 
 @media (min-width: 640px) {
@@ -244,44 +252,9 @@ html.lenis body {
   .feed > *:nth-child(6n + 2) { grid-column: span 5; }
   .feed > *:nth-child(6n + 3) { grid-column: span 5; }
   .feed > *:nth-child(6n + 4) { grid-column: span 7; }
-}
 
-@media (min-width: 1024px) {
-  .feed { gap: clamp(3rem, 6vw, 6rem) 3rem; }
-  .feed > *:nth-child(6n + 3) { grid-column: span 4; }
-  .feed > *:nth-child(6n + 4) { grid-column: span 8; }
-}
-
-/*
-   Row alignment
-   -------------
-   A grid row is as tall as its tallest item, so pairing a landscape tile with
-   a portrait one leaves dead space under the shorter of the two.
-
-   Deriving the height from an aspect ratio cannot fix that once there are
-   column gaps: a tile's width is `span x column + (span - 1) x gap`, so width
-   is not proportional to span, and equal ratios give unequal heights. At 2560
-   the mismatch across one row was about 20px.
-
-   So the height is set directly instead, identical for every tile in a row,
-   and the grid decides the widths. Rows then close flush by construction at
-   any viewport, whatever the gap. Units are cqw - a percentage of the feed's
-   own width - so this holds above the container's max-width too, where vw
-   would keep growing after the layout had stopped.
-
-   Row heights still differ from each other, so the page keeps its cadence
-   rather than becoming a uniform wall. Images cover-crop to fit; the detail
-   view shows them uncropped.
-
-   Below 640px the feed is a single column where nothing can misalign, so
-   tiles keep their true proportions there.
-*/
-.feed {
-  container-type: inline-size;
-}
-
-@media (min-width: 640px) {
-  /* Two across: rows of 7+5, 5+7, 6+6 */
+  /* Two across at tablet width, density-independent. Heights are set rather
+     than derived so rows close flush here too. */
   .feed > *:nth-child(6n + 1) .frame,
   .feed > *:nth-child(6n + 2) .frame { height: 42cqw; aspect-ratio: auto; }
   .feed > *:nth-child(6n + 3) .frame,
@@ -290,31 +263,67 @@ html.lenis body {
   .feed > *:nth-child(6n + 6) .frame { height: 38cqw; aspect-ratio: auto; }
 }
 
+@media (min-width: 1024px) {
+  .feed { gap: clamp(3rem, 6vw, 6rem) 3rem; }
+}
+
 /*
-   Three across on large displays. At 2-up past ~1500px each tile runs close to
-   1000px wide, which is more presence than any one frame in a feed needs.
+   Density
+   -------
+   How many frames per row is the viewer's choice, applied from 1024px up.
+   Below that there is not room for more than two, so the control does not
+   apply and the responsive rhythm above stands.
 
-   1536px rather than 1280px: a 1440 laptop still reads well at two across, and
-   going three there would make tiles small rather than better.
+   Heights are set directly rather than derived from an aspect ratio. A tile's
+   width is `span x column + (span - 1) x gap`, so width is not proportional to
+   span - equal ratios give unequal heights, and the row stops closing flush.
+   Setting the height makes every tile in a row identical by construction, at
+   any viewport and any gap.
 
-   TILE_SPANS in composables/useCloudinaryImage.ts mirrors these spans - the
-   tests pin them together, because a drift costs bandwidth silently.
+   cqw is a percentage of the feed's own width, so this still holds past the
+   container's 1600px max-width where vw would keep growing.
+
+   TILE_SPANS in composables/useCloudinaryImage.ts mirrors these spans. A drift
+   between them costs bandwidth silently; the tests pin them together.
 */
-@media (min-width: 1536px) {
-  /* Rows of 5+4+3 and 4+3+5, each summing to 12 */
-  .feed > *:nth-child(6n + 1) { grid-column: span 5; }
-  .feed > *:nth-child(6n + 2) { grid-column: span 4; }
-  .feed > *:nth-child(6n + 3) { grid-column: span 3; }
-  .feed > *:nth-child(6n + 4) { grid-column: span 4; }
-  .feed > *:nth-child(6n + 5) { grid-column: span 3; }
-  .feed > *:nth-child(6n + 6) { grid-column: span 5; }
+@media (min-width: 1024px) {
+  /* Large - two across: 7+5, 5+7, 6+6 */
+  .feed[data-density='l'] > *:nth-child(6n + 1) { grid-column: span 7; }
+  .feed[data-density='l'] > *:nth-child(6n + 2) { grid-column: span 5; }
+  .feed[data-density='l'] > *:nth-child(6n + 3) { grid-column: span 5; }
+  .feed[data-density='l'] > *:nth-child(6n + 4) { grid-column: span 7; }
+  .feed[data-density='l'] > *:nth-child(6n + 5) { grid-column: span 6; }
+  .feed[data-density='l'] > *:nth-child(6n + 6) { grid-column: span 6; }
 
-  .feed > *:nth-child(6n + 1) .frame,
-  .feed > *:nth-child(6n + 2) .frame,
-  .feed > *:nth-child(6n + 3) .frame { height: 30cqw; }
-  .feed > *:nth-child(6n + 4) .frame,
-  .feed > *:nth-child(6n + 5) .frame,
-  .feed > *:nth-child(6n + 6) .frame { height: 34cqw; }
+  .feed[data-density='l'] > *:nth-child(6n + 1) .frame,
+  .feed[data-density='l'] > *:nth-child(6n + 2) .frame { height: 42cqw; }
+  .feed[data-density='l'] > *:nth-child(6n + 3) .frame,
+  .feed[data-density='l'] > *:nth-child(6n + 4) .frame { height: 40cqw; }
+  .feed[data-density='l'] > *:nth-child(6n + 5) .frame,
+  .feed[data-density='l'] > *:nth-child(6n + 6) .frame { height: 38cqw; }
+
+  /* Medium - three across: 5+4+3, 4+3+5 */
+  .feed[data-density='m'] > *:nth-child(6n + 1) { grid-column: span 5; }
+  .feed[data-density='m'] > *:nth-child(6n + 2) { grid-column: span 4; }
+  .feed[data-density='m'] > *:nth-child(6n + 3) { grid-column: span 3; }
+  .feed[data-density='m'] > *:nth-child(6n + 4) { grid-column: span 4; }
+  .feed[data-density='m'] > *:nth-child(6n + 5) { grid-column: span 3; }
+  .feed[data-density='m'] > *:nth-child(6n + 6) { grid-column: span 5; }
+
+  .feed[data-density='m'] > *:nth-child(6n + 1) .frame,
+  .feed[data-density='m'] > *:nth-child(6n + 2) .frame,
+  .feed[data-density='m'] > *:nth-child(6n + 3) .frame { height: 30cqw; }
+  .feed[data-density='m'] > *:nth-child(6n + 4) .frame,
+  .feed[data-density='m'] > *:nth-child(6n + 5) .frame,
+  .feed[data-density='m'] > *:nth-child(6n + 6) .frame { height: 34cqw; }
+
+  /*
+     Small - four across, every tile the same span. Varying them here would
+     need a rhythm whose length divides by four, and mixing that with the
+     six-item cycle used above would put rows out of step.
+  */
+  .feed[data-density='s'] > * { grid-column: span 3; }
+  .feed[data-density='s'] > * .frame { height: 24cqw; }
 }
 
 /*

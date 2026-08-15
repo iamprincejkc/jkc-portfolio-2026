@@ -15,21 +15,20 @@
 const WIDTHS = [420, 640, 828, 1080, 1280, 1600, 1920, 2560]
 
 /**
- * Column span of each tile in the feed, keyed by position in the repeating
- * six-item rhythm. Must match the `.feed` grid in assets/css/main.css - if
- * these drift apart the browser silently downloads the wrong size.
+ * Column span of each tile, keyed by position in the repeating six-item
+ * rhythm. Must match the `.feed` grid in assets/css/main.css - if these drift
+ * apart the browser silently downloads the wrong size.
  *
- * [640-1023px, 1024-1535px, 1536px and above], out of 12.
- * The last tier is three across; the others are two.
+ * Out of 12 columns. The tablet tier (640-1023px) is always two across; from
+ * 1024px the viewer's density choice decides.
  */
-const TILE_SPANS: [number, number, number][] = [
-  [7, 7, 5], // 6n+1
-  [5, 5, 4], // 6n+2
-  [5, 4, 3], // 6n+3
-  [7, 8, 4], // 6n+4
-  [6, 6, 3], // 6n+5
-  [6, 6, 5], // 6n+6
-]
+const TABLET_SPANS = [7, 5, 5, 7, 6, 6]
+
+const DESKTOP_SPANS: Record<'s' | 'm' | 'l', number[]> = {
+  l: [7, 5, 5, 7, 6, 6], // two across
+  m: [5, 4, 3, 4, 3, 5], // three across
+  s: [3, 3, 3, 3, 3, 3], // four across
+}
 
 /** Container max-width minus its horizontal padding, at the large breakpoint. */
 const CONTENT_MAX = 1600 - 96
@@ -42,19 +41,20 @@ const CONTENT_MAX = 1600 - 96
  * image bigger than it needs to be. A tile spanning 4 of 12 columns that
  * claims 58vw fetches roughly three times the pixels it can display.
  */
-export function tileSizes(index: number): string {
-  const [small, large, xl] = TILE_SPANS[index % TILE_SPANS.length]
+export function tileSizes(index: number, density: 's' | 'm' | 'l' = 'm'): string {
+  const position = index % 6
+  const tablet = TABLET_SPANS[position]
+  const desktop = DESKTOP_SPANS[density][position]
 
   const vw = (span: number) => Math.round((span / 12) * 100)
   // Past the container's max width the tile stops growing, so vw would keep
-  // over-estimating. Uses the three-across span, which is what applies there.
-  const cappedPx = Math.round((xl / 12) * CONTENT_MAX)
+  // over-estimating.
+  const cappedPx = Math.round((desktop / 12) * CONTENT_MAX)
 
   return [
     `(min-width: 1600px) ${cappedPx}px`,
-    `(min-width: 1536px) ${vw(xl)}vw`,
-    `(min-width: 1024px) ${vw(large)}vw`,
-    `(min-width: 640px) ${vw(small)}vw`,
+    `(min-width: 1024px) ${vw(desktop)}vw`,
+    `(min-width: 640px) ${vw(tablet)}vw`,
     '100vw',
   ].join(', ')
 }

@@ -9,6 +9,7 @@ useHead({
 })
 
 const { data, pending } = useGalleryPhotos()
+const { density, setDensity, options: densityOptions } = useGalleryDensity()
 
 const ALL = 'all'
 const active = ref(ALL)
@@ -74,8 +75,9 @@ const visible = computed(() =>
           v-if="categories.length > 1"
           class="sticky top-[var(--gallery-header-h)] z-40 -mx-6 border-b border-border-muted bg-bg/85 px-6 backdrop-blur-xl lg:-mx-12 lg:px-12"
         >
+          <div class="flex items-center justify-between gap-6 py-4">
           <div
-            class="no-scrollbar flex gap-6 overflow-x-auto py-4"
+            class="no-scrollbar flex gap-6 overflow-x-auto"
             role="group"
             aria-label="Filter by category"
           >
@@ -101,15 +103,38 @@ const visible = computed(() =>
               }}<sup class="ml-1 tabular-nums opacity-60">{{ category.count }}</sup>
             </button>
           </div>
+
+          <!-- Density: hidden below 1024px, where the grid has no room to
+               offer a choice. -->
+          <div
+            class="hidden shrink-0 items-center gap-4 lg:flex"
+            role="group"
+            aria-label="Frames per row"
+          >
+            <button
+              v-for="option in densityOptions"
+              :key="option.value"
+              type="button"
+              class="eyebrow transition-colors duration-fast"
+              :class="density === option.value ? '!text-accent' : 'hover:!text-primary'"
+              :aria-pressed="density === option.value"
+              :title="`${option.perRow} per row`"
+              @click="setDensity(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
+          </div>
         </div>
 
-        <div class="feed pt-[clamp(2.5rem,6vw,5rem)]">
+        <div class="feed pt-[clamp(2.5rem,6vw,5rem)]" :data-density="density">
           <GalleryFrame
             v-for="(photo, index) in visible"
             :key="photo.publicId"
             :photo="photo"
             :index="index"
             :priority="active === ALL && index < 2"
+            :density="density"
           />
         </div>
 

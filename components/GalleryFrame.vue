@@ -8,8 +8,10 @@ const props = withDefaults(
     index: number
     /** True for the first row - these are the LCP candidates. */
     priority?: boolean
+    /** Drives `sizes`; must match the density the grid is rendering at. */
+    density?: 's' | 'm' | 'l'
   }>(),
-  { priority: false },
+  { priority: false, density: 'm' },
 )
 
 const { url, srcset, videoPoster, videoSrc } = useCloudinaryImage()
@@ -58,7 +60,7 @@ function pause() {
           v-if="photo.kind === 'image'"
           :src="url(photo.publicId, 828, { quality: 'eco' })"
           :srcset="srcset(photo.publicId, { quality: 'eco', maxWidth: 1600 })"
-          :sizes="tileSizes(index)"
+          :sizes="tileSizes(index, props.density)"
           :alt="photo.alt"
           :width="photo.width"
           :height="photo.height"
