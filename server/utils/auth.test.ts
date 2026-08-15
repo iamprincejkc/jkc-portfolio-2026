@@ -75,13 +75,22 @@ describe('session tokens', () => {
   })
 })
 
+/*
+ * Fixture values are deliberately obvious non-secrets. An earlier version used
+ * a PIN that was also set in the real environment, and Netlify's secret
+ * scanning failed the deploy on it - correctly. Test data must never resemble
+ * a live credential.
+ */
+const FAKE_PIN = 'pin-fixture-aaaa'
+const FAKE_PIN_ALT = 'pin-fixture-bbbb'
+
 describe('safeEqual', () => {
   it('matches identical values', () => {
-    expect(safeEqual('03052026', '03052026')).toBe(true)
+    expect(safeEqual(FAKE_PIN, FAKE_PIN)).toBe(true)
   })
 
   it('rejects values differing by one character', () => {
-    expect(safeEqual('03052026', '03052027')).toBe(false)
+    expect(safeEqual(FAKE_PIN, FAKE_PIN_ALT)).toBe(false)
   })
 
   it('rejects different lengths without throwing', () => {

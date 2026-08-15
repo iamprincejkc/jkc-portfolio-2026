@@ -53,9 +53,12 @@ export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
   /*
-   * Nuxt parses environment values with `destr`, so an all-digits PIN such as
-   * 246810 arrives as a number, not a string. Coerce before any crypto touches
-   * it - `createHmac().update()` rejects non-string input outright.
+   * Nuxt parses environment values with `destr`, so an all-digits PIN arrives
+   * as a number rather than a string. Coerce before any crypto touches it -
+   * `createHmac().update()` rejects non-string input outright.
+   *
+   * A leading zero keeps it a string (invalid JSON), which is a difference
+   * worth knowing but not worth relying on.
    */
   const secret = String(config.authSecret ?? '')
   const expected = String((scope === 'admin' ? config.adminPin : config.sitePin) ?? '')
