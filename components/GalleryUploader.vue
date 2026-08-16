@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 /**
  * Direct-to-Cloudinary uploader.
@@ -11,6 +11,11 @@ import { computed, onBeforeUnmount, ref } from 'vue'
  *
  * XHR rather than fetch, because upload progress still has no widely supported
  * fetch equivalent.
+ *
+ * The layout is built around not scrolling. Queued files are a thumbnail grid
+ * rather than a stack of tall forms, the fields that are the same across a
+ * batch are entered once at the top, and the action bar is pinned so it is
+ * reachable without travelling past the queue to find it.
  */
 
 const emit = defineEmits<{ uploaded: [] }>()
@@ -20,24 +25,17 @@ const emit = defineEmits<{ uploaded: [] }>()
  * empty `file.type` - Chrome and Firefox cannot decode it, so they will not
  * name it either. Matching on MIME alone rejects exactly the photos most
  * likely to be uploaded, so extension is the fallback.
- *
- * Cloudinary transcodes HEIC on ingest and `f_auto` serves JPEG/WebP, so the
- * gallery never has to display a format browsers cannot render.
  */
 const IMAGE_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif', 'image/heic', 'image/heif']
 const VIDEO_MIME = ['video/mp4', 'video/quicktime', 'video/webm']
-
 const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'webp', 'avif', 'gif', 'heic', 'heif']
 const VIDEO_EXT = ['mp4', 'mov', 'webm', 'm4v']
 
 /*
- * Cloudinary's own limits, not arbitrary choices. The free tier rejects images
- * over 10MB and video over 100MB, and it does so *after* the whole file has
- * uploaded - so checking here saves a long wait ending in a confusing error.
- *
- * Oversized photos are downscaled before this check rather than rejected: see
- * prepareImageForUpload. The cap is the backstop for what cannot be
- * downscaled, which in practice means HEIC on Chrome and Firefox.
+ * Cloudinary's own limits. It rejects oversized files only after the whole
+ * upload has finished, so checking here saves a long wait ending in a
+ * confusing error. Photos are downscaled before this check rather than
+ * rejected; the cap is the backstop for what cannot be downscaled.
  */
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024
@@ -45,29 +43,6 @@ const MAX_VIDEO_BYTES = 100 * 1024 * 1024
 const CONCURRENCY = 3
 
 type Kind = 'image' | 'video'
-
-function extensionOf(name: string): string {
-  return name.split('.').pop()?.toLowerCase() ?? ''
-}
-
-/** Decide the resource type, falling back to extension when MIME is missing. */
-function kindOf(file: File): Kind | null {
-  const type = file.type.toLowerCase()
-  if (VIDEO_MIME.includes(type)) return 'video'
-  if (IMAGE_MIME.includes(type)) return 'image'
-
-  const ext = extensionOf(file.name)
-  if (VIDEO_EXT.includes(ext)) return 'video'
-  if (IMAGE_EXT.includes(ext)) return 'image'
-  return null
-}
-
-/** Browsers cannot paint a local HEIC preview, so do not try. */
-function canPreview(file: File): boolean {
-  const ext = extensionOf(file.name)
-  return !['heic', 'heif'].includes(ext) && !file.type.includes('heic') && !file.type.includes('heif')
-}
-
 type Status = 'queued' | 'uploading' | 'done' | 'error'
 
 type Item = {
@@ -77,24 +52,30 @@ type Item = {
   /** Empty when the browser cannot render a local preview (HEIC). */
   previewUrl: string
   title: string
-  client: string
-  year: string
   alt: string
-  tags: string
   progress: number
   status: Status
   error?: string
-  /** e.g. "resized 15.0 MB to 1.4 MB". */
   note?: string
 }
 
-const input = ref<HTMLInputElement | null>(null)
-const items = ref<Item[]>([])
-const dragging = ref(false)
-const running = ref(false)
-const summary = ref<string | null>(null)
+const extensionOf = (name: string) => name.split('.').pop()?.toLowerCase() ?? ''
 
-const pending = computed(() => items.value.filter((item) => item.status !== 'done').length)
+function kindOf(file: File): Kind | null {
+  const type = file.type.toLowerCase()
+  if (VIDEO_MIME.includes(type)) return 'video'
+  if (IMAGE_MIME.includes(type)) return 'image'
+  const ext = extensionOf(file.name)
+  if (VIDEO_EXT.includes(ext)) return 'video'
+  if (IMAGE_EXT.includes(ext)) return 'image'
+  return null
+}
+
+/** Browsers cannot paint a local HEIC preview, so do not try. */
+function canPreview(file: File): boolean {
+  const ext = extensionOf(file.name)
+  return !['heic', 'heif'].includes(ext) && !/hei[cf]/.test(file.type)
+}
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
@@ -110,8 +91,29 @@ function titleFromFilename(name: string): string {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
+const input = ref<HTMLInputElement | null>(null)
+const items = ref<Item[]>([])
+const dragging = ref(false)
+const running = ref(false)
+const summary = ref<string | null>(null)
+const expanded = ref<string | null>(null)
+
+/*
+ * Client, year and categories are almost always the same across one batch, so
+ * they are entered once here instead of on every card. Editing one rewrites
+ * every queued item - which is the point, and is stated in the UI.
+ */
+const batch = ref({ client: '', year: new Date().getFullYear().toString(), tags: '' })
+
+const pending = computed(() => items.value.filter((i) => i.status !== 'done'))
+const failed = computed(() => items.value.filter((i) => i.status === 'error'))
+const done = computed(() => items.value.filter((i) => i.status === 'done'))
+
+const totalBytes = computed(() =>
+  pending.value.reduce((total, item) => total + item.file.size, 0),
+)
+
 function addFiles(files: FileList | File[]) {
-  const year = new Date().getFullYear().toString()
   const accepted: Item[] = []
   const rejected: string[] = []
 
@@ -121,12 +123,8 @@ function addFiles(files: FileList | File[]) {
       rejected.push(`${file.name} (unsupported type)`)
       continue
     }
-
-    /*
-     * Video is checked now because nothing can shrink it here. Photos are
-     * checked after downscaling instead - rejecting a 15MB original that
-     * would have become 1.5MB would be wrong.
-     */
+    // Video is checked now because nothing here can shrink it. Photos are
+    // checked after downscaling instead.
     if (kind === 'video' && file.size > MAX_VIDEO_BYTES) {
       rejected.push(`${file.name} (over ${formatBytes(MAX_VIDEO_BYTES)})`)
       continue
@@ -138,10 +136,7 @@ function addFiles(files: FileList | File[]) {
       kind,
       previewUrl: canPreview(file) ? URL.createObjectURL(file) : '',
       title: titleFromFilename(file.name),
-      client: '',
-      year,
       alt: '',
-      tags: '',
       progress: 0,
       status: 'queued',
     })
@@ -153,15 +148,21 @@ function addFiles(files: FileList | File[]) {
 
 function remove(id: string) {
   const target = items.value.find((item) => item.id === id)
-  // HEIC items have no object URL to revoke.
   if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
   items.value = items.value.filter((item) => item.id !== id)
+  if (expanded.value === id) expanded.value = null
 }
 
 function clearAll() {
   for (const item of items.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
   items.value = []
   summary.value = null
+  expanded.value = null
+}
+
+function clearFinished() {
+  for (const item of done.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+  items.value = items.value.filter((item) => item.status !== 'done')
 }
 
 // Object URLs are a genuine leak across a long admin session.
@@ -169,20 +170,25 @@ onBeforeUnmount(() => {
   for (const item of items.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
 })
 
+// Clearing the queue should not strand the batch fields in a half-used state.
+watch(items, (list) => {
+  if (!list.length) expanded.value = null
+})
+
 async function uploadOne(item: Item): Promise<boolean> {
   item.status = 'uploading'
   item.progress = 0
   item.error = undefined
 
-  const tags = item.tags
+  const tags = batch.value.tags
     .split(',')
     .map((tag) => tag.trim())
     .filter(Boolean)
     .slice(0, 8)
 
   /*
-   * Downscale before uploading. The gallery never serves wider than 2560px,
-   * so a larger original is bytes nobody sees - and Cloudinary would reject it
+   * Downscale before uploading. The gallery never serves wider than 2560px, so
+   * a larger original is bytes nobody sees - and Cloudinary would reject it
    * anyway, only after the whole upload had finished.
    */
   let upload = item.file
@@ -190,34 +196,26 @@ async function uploadOne(item: Item): Promise<boolean> {
     const prepared = await prepareImageForUpload(item.file)
     upload = prepared.file
     if (prepared.changed) {
-      item.note = `resized ${formatBytes(prepared.originalBytes)} to ${formatBytes(upload.size)}`
+      item.note = `${formatBytes(prepared.originalBytes)} → ${formatBytes(upload.size)}`
     }
   }
 
   if (item.kind === 'image' && upload.size > MAX_IMAGE_BYTES) {
     item.status = 'error'
-    item.error = `Still ${formatBytes(upload.size)} after resizing; Cloudinary's limit is ${formatBytes(MAX_IMAGE_BYTES)}. Convert it to JPEG first.`
+    item.error = `Still ${formatBytes(upload.size)} after resizing; the limit is ${formatBytes(MAX_IMAGE_BYTES)}.`
     return false
   }
 
-  // Only still images the browser can decode yield a colour. Video and HEIC
-  // fall back to the neutral placeholder, which dominantColor already returns.
   const color = item.kind === 'image' && item.previewUrl ? await dominantColor(item.file) : ''
 
-  let ticket: {
-    apiKey: string
-    signature: string
-    uploadUrl: string
-    params: Record<string, string>
-  }
-
+  let ticket: { apiKey: string; signature: string; uploadUrl: string; params: Record<string, string> }
   try {
     ticket = await $fetch('/api/gallery/admin/sign-upload', {
       method: 'POST',
       body: {
         title: item.title,
-        client: item.client,
-        year: item.year,
+        client: batch.value.client,
+        year: batch.value.year,
         alt: item.alt || item.title,
         color,
         tags,
@@ -277,7 +275,7 @@ async function uploadOne(item: Item): Promise<boolean> {
 }
 
 async function uploadAll() {
-  const queue = items.value.filter((item) => item.status === 'queued' || item.status === 'error')
+  const queue = items.value.filter((i) => i.status === 'queued' || i.status === 'error')
   if (!queue.length || running.value) return
 
   running.value = true
@@ -313,9 +311,17 @@ async function uploadAll() {
 
 <template>
   <section>
+    <!--
+      The dropzone is generous while the queue is empty and becomes a slim
+      strip once there are files, so the queue itself does not start below the
+      fold.
+    -->
     <div
-      class="flex flex-col items-center justify-center border border-dashed px-6 py-[clamp(3rem,8vw,6rem)] text-center transition-colors duration-fast"
-      :class="dragging ? 'border-accent bg-white/5' : 'border-border-muted'"
+      class="rounded-sm border border-dashed transition-colors duration-fast"
+      :class="[
+        dragging ? 'border-accent bg-white/5' : 'border-border-muted',
+        items.length ? 'px-4 py-4' : 'px-6 py-[clamp(2.5rem,7vw,4.5rem)]',
+      ]"
       @dragover.prevent="dragging = true"
       @dragleave="dragging = false"
       @drop.prevent="
@@ -323,23 +329,36 @@ async function uploadAll() {
         addFiles($event.dataTransfer!.files)
       "
     >
-      <p class="font-display text-2xl">Drop images here</p>
-      <p class="mt-3 text-xs text-text-muted">
-        Photos (JPEG, PNG, HEIC, WebP, AVIF, GIF) up to
-        {{ formatBytes(MAX_IMAGE_BYTES) }} · video (MP4, MOV, WebM) up to
-        {{ formatBytes(MAX_VIDEO_BYTES) }}
-      </p>
-      <button
-        type="button"
-        class="eyebrow mt-8 border border-accent px-6 py-3 !text-accent transition-colors duration-normal hover:bg-accent hover:!text-text-inverse"
-        @click="input?.click()"
-      >
-        Choose files
-      </button>
+      <div v-if="!items.length" class="text-center">
+        <p class="font-display text-2xl">Drop photos or video here</p>
+        <p class="mt-3 text-xs text-text-muted">
+          JPEG, PNG, HEIC, WebP, AVIF, GIF to {{ formatBytes(MAX_IMAGE_BYTES) }} ·
+          MP4, MOV, WebM to {{ formatBytes(MAX_VIDEO_BYTES) }}
+        </p>
+        <button
+          type="button"
+          class="eyebrow mt-7 border border-accent px-6 py-3 !text-accent transition-colors duration-normal hover:bg-accent hover:!text-text-inverse"
+          @click="input?.click()"
+        >
+          Choose files
+        </button>
+      </div>
+
+      <div v-else class="flex items-center justify-between gap-4">
+        <p class="text-xs text-text-muted">Drop more here, or</p>
+        <button
+          type="button"
+          class="eyebrow border border-border-muted px-4 py-2 transition-colors duration-fast hover:border-accent hover:!text-accent"
+          @click="input?.click()"
+        >
+          Add files
+        </button>
+      </div>
+
       <input
         ref="input"
         type="file"
-        :accept="[...IMAGE_MIME, ...VIDEO_MIME, ...IMAGE_EXT.map(e => `.${e}`), ...VIDEO_EXT.map(e => `.${e}`)].join(',')"
+        :accept="[...IMAGE_MIME, ...VIDEO_MIME, ...IMAGE_EXT.map((e) => `.${e}`), ...VIDEO_EXT.map((e) => `.${e}`)].join(',')"
         multiple
         class="sr-only"
         @change="
@@ -349,21 +368,48 @@ async function uploadAll() {
       />
     </div>
 
-    <div class="min-h-6 pt-4" aria-live="polite">
+    <div aria-live="polite" class="min-h-5 pt-3">
       <p v-if="summary" class="text-xs text-text-muted">{{ summary }}</p>
     </div>
 
     <template v-if="items.length">
-      <ul class="mt-6 border-t border-border-muted">
-        <li
-          v-for="item in items"
-          :key="item.id"
-          class="grid gap-5 border-b border-border-muted py-6 sm:grid-cols-[8rem_1fr]"
-        >
-          <div class="relative aspect-square overflow-hidden bg-white/5">
-            <!-- Video previews locally without any upload; HEIC cannot be
-                 decoded by Chrome or Firefox, so it gets a label instead of a
-                 broken image icon. -->
+      <!--
+        Client, year and categories are nearly always shared across a batch.
+        Asking for them once removes three fields from every card.
+      -->
+      <div class="mt-4 grid gap-4 border-y border-border-muted py-5 sm:grid-cols-3">
+        <label class="block">
+          <span class="eyebrow">Client — all files</span>
+          <input
+            v-model="batch.client"
+            type="text"
+            class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent"
+          />
+        </label>
+        <label class="block">
+          <span class="eyebrow">Year — all files</span>
+          <input
+            v-model="batch.year"
+            type="text"
+            inputmode="numeric"
+            class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent"
+          />
+        </label>
+        <label class="block">
+          <span class="eyebrow">Categories — all files</span>
+          <input
+            v-model="batch.tags"
+            type="text"
+            placeholder="comma separated"
+            class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent placeholder:text-text-muted/40"
+          />
+        </label>
+      </div>
+
+      <!-- Thumbnail grid rather than a stack of tall forms. -->
+      <ul class="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+        <li v-for="item in items" :key="item.id" class="group">
+          <div class="relative aspect-square overflow-hidden rounded-sm bg-white/5">
             <video
               v-if="item.kind === 'video' && item.previewUrl"
               :src="item.previewUrl"
@@ -380,15 +426,27 @@ async function uploadAll() {
             />
             <div
               v-else
-              class="flex h-full w-full flex-col items-center justify-center gap-1 px-2 text-center"
+              class="flex h-full w-full flex-col items-center justify-center gap-1 text-center"
             >
               <span class="eyebrow !text-accent">{{ extensionOf(item.file.name) || 'file' }}</span>
-              <span class="text-[10px] leading-tight text-text-muted">
-                preview unavailable
-              </span>
+              <span class="text-[10px] leading-tight text-text-muted">no preview</span>
+            </div>
+
+            <!-- Status sits on the thumbnail so a row needs no extra height. -->
+            <div
+              v-if="item.status === 'done'"
+              class="absolute inset-0 flex items-center justify-center bg-bg/70"
+            >
+              <span class="eyebrow !text-accent">Uploaded</span>
             </div>
             <div
-              v-if="item.status === 'uploading' || item.status === 'done'"
+              v-else-if="item.status === 'error'"
+              class="absolute inset-0 flex items-center justify-center bg-bg/80 p-2 text-center"
+            >
+              <span class="text-[10px] leading-snug text-text-muted">{{ item.error }}</span>
+            </div>
+            <div
+              v-else-if="item.status === 'uploading'"
               class="absolute inset-x-0 bottom-0 h-1 bg-white/20"
             >
               <div
@@ -396,106 +454,94 @@ async function uploadAll() {
                 :style="{ width: `${item.progress}%` }"
               />
             </div>
+
+            <button
+              v-if="item.status !== 'uploading' && item.status !== 'done'"
+              type="button"
+              class="absolute right-1.5 top-1.5 flex h-7 w-7 items-center justify-center rounded-full bg-bg/70 text-sm opacity-0 transition-opacity duration-fast group-hover:opacity-100 focus:opacity-100"
+              :aria-label="`Remove ${item.file.name}`"
+              @click="remove(item.id)"
+            >
+              ×
+            </button>
           </div>
 
-          <div class="grid gap-3">
-            <div class="flex items-start justify-between gap-4">
-              <p class="truncate text-xs text-text-muted">
-                {{ item.file.name }} · {{ formatBytes(item.file.size) }}
-              </p>
-              <span v-if="item.status === 'done'" class="eyebrow shrink-0 !text-accent">
-                Uploaded
-              </span>
-              <span
-                v-else-if="item.status === 'uploading'"
-                class="eyebrow shrink-0 tabular-nums"
-              >
-                {{ item.progress }}%
-              </span>
-              <button
-                v-else
-                type="button"
-                class="eyebrow shrink-0 hover:text-primary transition-colors duration-fast"
-                @click="remove(item.id)"
-              >
-                Remove
-              </button>
-            </div>
+          <!-- Title is the one field that genuinely differs per photo. -->
+          <input
+            v-model="item.title"
+            type="text"
+            :disabled="item.status === 'done'"
+            :aria-label="`Title for ${item.file.name}`"
+            class="mt-2 w-full border-b border-border-muted bg-transparent pb-1.5 text-xs outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
+          />
 
-            <div class="grid gap-3 sm:grid-cols-2">
-              <label class="block">
-                <span class="eyebrow">Title</span>
-                <input
-                  v-model="item.title"
-                  type="text"
-                  :disabled="item.status === 'done'"
-                  class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
-                />
-              </label>
-              <label class="block">
-                <span class="eyebrow">Client</span>
-                <input
-                  v-model="item.client"
-                  type="text"
-                  :disabled="item.status === 'done'"
-                  class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
-                />
-              </label>
-              <label class="block">
-                <span class="eyebrow">Year</span>
-                <input
-                  v-model="item.year"
-                  type="text"
-                  inputmode="numeric"
-                  :disabled="item.status === 'done'"
-                  class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
-                />
-              </label>
-              <label class="block">
-                <span class="eyebrow">Categories (comma separated)</span>
-                <input
-                  v-model="item.tags"
-                  type="text"
-                  :disabled="item.status === 'done'"
-                  class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
-                />
-              </label>
-              <label class="block sm:col-span-2">
-                <span class="eyebrow">Alt text (describes the image for screen readers)</span>
-                <input
-                  v-model="item.alt"
-                  type="text"
-                  :disabled="item.status === 'done'"
-                  class="mt-2 w-full border-b border-border-muted bg-transparent pb-2 text-sm outline-none transition-colors duration-fast focus:border-accent disabled:opacity-50"
-                />
-              </label>
-            </div>
-
-            <p v-if="item.error" class="text-xs text-text-muted">{{ item.error }}</p>
-            <!-- Say when a photo was downscaled, rather than silently
-                 uploading something different from what was chosen. -->
-            <p v-else-if="item.note" class="text-xs text-text-muted">{{ item.note }}</p>
+          <div class="mt-1.5 flex items-center justify-between gap-2">
+            <span class="truncate text-[10px] text-text-muted">
+              {{ item.note || formatBytes(item.file.size) }}
+            </span>
+            <button
+              type="button"
+              class="shrink-0 text-[10px] uppercase tracking-widest text-text-muted transition-colors duration-fast hover:text-accent"
+              :aria-expanded="expanded === item.id"
+              @click="expanded = expanded === item.id ? null : item.id"
+            >
+              {{ expanded === item.id ? 'Less' : 'Alt' }}
+            </button>
           </div>
+
+          <label v-if="expanded === item.id" class="mt-2 block">
+            <span class="eyebrow">Alt text</span>
+            <input
+              v-model="item.alt"
+              type="text"
+              :placeholder="item.title"
+              class="mt-1 w-full border-b border-border-muted bg-transparent pb-1.5 text-xs outline-none transition-colors duration-fast focus:border-accent placeholder:text-text-muted/40"
+            />
+          </label>
         </li>
       </ul>
 
-      <div class="mt-8 flex flex-wrap items-center gap-4">
-        <button
-          type="button"
-          :disabled="running || pending === 0"
-          class="eyebrow border border-accent bg-accent px-8 py-4 !text-text-inverse transition-all duration-normal hover:bg-transparent hover:!text-accent disabled:cursor-not-allowed disabled:border-border-muted disabled:bg-transparent disabled:!text-text-muted"
-          @click="uploadAll"
-        >
-          {{ running ? 'Uploading' : pending ? `Upload ${pending}` : 'Upload' }}
-        </button>
-        <button
-          type="button"
-          :disabled="running"
-          class="eyebrow hover:text-primary transition-colors duration-fast disabled:opacity-40"
-          @click="clearAll"
-        >
-          Clear
-        </button>
+      <!--
+        Pinned so it is reachable without scrolling past the queue to find it -
+        the single biggest cost of the previous layout.
+      -->
+      <div
+        class="sticky bottom-0 z-30 -mx-6 mt-6 border-t border-border-muted bg-bg/90 px-6 py-4 backdrop-blur-xl lg:-mx-12 lg:px-12"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <p class="eyebrow">
+            {{ pending.length }} ready<template v-if="totalBytes"> · {{ formatBytes(totalBytes) }}</template>
+            <template v-if="done.length"> · {{ done.length }} done</template>
+            <template v-if="failed.length"> · {{ failed.length }} failed</template>
+          </p>
+
+          <div class="flex items-center gap-4">
+            <button
+              v-if="done.length"
+              type="button"
+              class="eyebrow text-text-muted transition-colors duration-fast hover:text-primary"
+              @click="clearFinished"
+            >
+              Clear done
+            </button>
+            <button
+              type="button"
+              :disabled="running"
+              class="eyebrow text-text-muted transition-colors duration-fast hover:text-primary disabled:opacity-40"
+              @click="clearAll"
+            >
+              Clear all
+            </button>
+            <button
+              type="button"
+              :disabled="running || !pending.length"
+              class="eyebrow border border-accent bg-accent px-7 py-3.5 !text-text-inverse transition-all duration-normal hover:bg-transparent hover:!text-accent disabled:cursor-not-allowed disabled:border-border-muted disabled:bg-transparent disabled:!text-text-muted"
+              @click="uploadAll"
+            >
+              {{ running ? 'Uploading' : failed.length ? 'Retry & upload' : `Upload ${pending.length}` }}
+            </button>
+          </div>
+        </div>
       </div>
     </template>
   </section>
