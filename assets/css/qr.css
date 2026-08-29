@@ -325,8 +325,25 @@
   height: 100%;
 }
 
-.qr-slab[data-placeholder='true'] {
-  opacity: 0.5;
+/*
+ * The placeholder state is said, not shown.
+ *
+ * This used to fade the whole slab to 50%. Over glass that does not read as
+ * "provisional", it reads as a broken, half-transparent QR code - and it was
+ * the first thing anyone saw on landing, before they had typed anything. A
+ * code is the one element on this page that must always look crisp, so the
+ * state is carried by the badge below it and by the disabled downloads.
+ */
+.qr-meta__badge {
+  padding: 0.125rem 0.5rem;
+  border-radius: var(--qr-pill);
+  background: rgb(var(--qr-tint) / 0.12);
+  border: 1px solid var(--qr-edge-soft);
+  color: rgb(var(--qr-tint) / 0.85);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-size: 10.5px;
 }
 
 .qr-slab--empty {

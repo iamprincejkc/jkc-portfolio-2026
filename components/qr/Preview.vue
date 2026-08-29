@@ -12,11 +12,7 @@ const props = defineProps<{
 <template>
   <div class="qr-stage">
     <!-- The code rests on its own pane of glass. -->
-    <div
-      v-if="props.svg"
-      class="glass qr-slab"
-      :data-placeholder="props.placeholder"
-    >
+    <div v-if="props.svg" class="glass qr-slab">
       <!-- The renderer's own output, injected as markup.
            Nothing here comes from the network or from another user: the string
            is built by `sceneToSvg` from typed state, and every colour and text
@@ -43,7 +39,7 @@ const props = defineProps<{
     </div>
 
     <p v-if="props.svg" class="qr-meta">
-      <span v-if="props.placeholder">Placeholder</span>
+      <span v-if="props.placeholder" class="qr-meta__badge">Placeholder</span>
       <span v-else>{{ props.moduleCount }} &times; {{ props.moduleCount }} modules</span>
       <span aria-hidden="true">&middot;</span>
       <span>error correction {{ props.ecc }}</span>
