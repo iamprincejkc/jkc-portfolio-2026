@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ContentMode, QrContent } from '~/utils/qr/payload'
+import type { ContentMode, QrContent, WifiSecurity } from '~/utils/qr/payload'
 import type { ErrorCorrection } from '~/utils/qr/matrix'
 import { effectiveEcc, type QrStyle } from '~/utils/qr/render'
 
@@ -53,6 +53,18 @@ const MODES = [
  * It lives here because it is a property of the data: how much of the code can
  * be scuffed, torn or covered and still read.
  */
+/*
+ * A segmented control rather than a `<select>`. Three short, mutually
+ * exclusive options is exactly what this control is for, and the page already
+ * speaks in segmented pills - two lone native dropdowns were the only controls
+ * whose appearance the browser, not this design, decided.
+ */
+const SECURITY = [
+  { value: 'WPA', label: 'WPA' },
+  { value: 'WEP', label: 'WEP' },
+  { value: 'nopass', label: 'Open' },
+] as const
+
 const ECC = [
   { value: 'L', label: 'L' },
   { value: 'M', label: 'M' },
@@ -132,18 +144,12 @@ function setEcc(value: string) {
         />
       </QrField>
 
-      <QrField label="Security" for="qr-wifi-sec">
-        <select
-          id="qr-wifi-sec"
-          class="qr-select"
-          :value="content.wifi.security"
-          @change="setWifi({ security: ($event.target as HTMLSelectElement).value as never })"
-        >
-          <option value="WPA">WPA / WPA2 / WPA3</option>
-          <option value="WEP">WEP</option>
-          <option value="nopass">Open, no password</option>
-        </select>
-      </QrField>
+      <QrSegmented
+        label="Security"
+        :model-value="content.wifi.security"
+        :options="SECURITY"
+        @update:model-value="setWifi({ security: $event as WifiSecurity })"
+      />
 
       <label class="qr-check">
         <input

@@ -2,7 +2,6 @@
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { buildScene, defaultStyle, scanRisk, type QrScene, type QrStyle } from '~/utils/qr/render'
 import { buildPayload, emptyContent, PLACEHOLDER_PAYLOAD, type QrContent } from '~/utils/qr/payload'
-import { sceneToSvg } from '~/utils/qr/export-svg'
 import { exportScene, type ExportFormat } from '~/utils/qr/download'
 import { randomizeStyle, STYLE_FACETS, type StyleFacet } from '~/utils/qr/randomize'
 import { queryToState, stateToQuery } from '~/utils/qr/share'
@@ -109,7 +108,6 @@ watch(
   { immediate: true, deep: true },
 )
 
-const svg = computed(() => (scene.value ? sceneToSvg(scene.value) : ''))
 const risk = computed(() => scanRisk(style.value))
 
 /* ----------------------------------------------------------------
@@ -242,12 +240,7 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
 
     <div class="qr-shell">
       <div class="qr-centre">
-        <QrPreview
-          :svg="svg"
-          :module-count="scene?.moduleCount ?? 0"
-          :ecc="scene?.ecc ?? 'M'"
-          :placeholder="!hasContent"
-        />
+        <QrPreview :scene="scene" :placeholder="!hasContent" />
 
         <!-- Reroll, and the locks that hold parts of the style still. -->
         <div class="glass-pill qr-reroll">
@@ -385,23 +378,6 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
   gap: 0.375rem;
   padding-right: 0.75rem;
   color: rgb(var(--qr-tint) / 0.72);
-}
-
-.qr-dock__select {
-  appearance: none;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
-  cursor: pointer;
-  padding: 0;
-}
-
-.qr-dock__select option {
-  background: #16161c;
-  color: #fff;
 }
 
 .qr-toast {

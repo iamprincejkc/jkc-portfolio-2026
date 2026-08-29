@@ -210,7 +210,6 @@
   .glass-pill,
   .qr-tile,
   .qr-input,
-  .qr-select,
   .qr-textarea,
   .qr-swatch,
   .qr-drop {
@@ -704,7 +703,6 @@
 }
 
 .qr-input,
-.qr-select,
 .qr-textarea {
   width: 100%;
   min-block-size: 44px;
@@ -729,27 +727,70 @@
 .qr-textarea::placeholder { color: rgb(var(--qr-tint) / 0.3); }
 
 .qr-input:hover,
-.qr-select:hover,
 .qr-textarea:hover { border-color: rgb(var(--qr-tint) / 0.2); }
 
 .qr-input:focus,
-.qr-select:focus,
 .qr-textarea:focus {
   border-color: rgb(var(--qr-tint) / 0.3);
   background: rgba(0, 0, 0, 0.34);
 }
 
-.qr-select {
+
+
+/* ------------------------------------------------------------
+   The one remaining dropdown
+
+   Everything else that picks one of a few options is a segmented control now.
+   This is the PNG size in the dock, which has four numeric options and no room
+   for a pill row.
+
+   Options carry their own colours because `color-scheme` alone is not enough:
+   several platforms draw the popup list with the OS theme regardless, which is
+   how a dark page ends up with a grey list of black text. Where the browser
+   supports a customisable picker, the popup is styled to match the rest of the
+   surface instead.
+   ------------------------------------------------------------ */
+.qr-dock__select {
   appearance: none;
-  padding-right: 2.25rem;
-  /* Chevron from two hard-stopped gradients, so it tracks `currentColor`. */
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: right 1.05rem center, right 0.75rem center;
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   cursor: pointer;
+}
+
+.qr-dock__select option {
+  background-color: #17171d;
+  color: #fff;
+}
+
+@supports (appearance: base-select) {
+  .qr-dock__select {
+    appearance: base-select;
+  }
+
+  .qr-dock__select::picker(select) {
+    appearance: base-select;
+    padding: 0.25rem;
+    border: 1px solid var(--qr-edge);
+    border-radius: 14px;
+    background: #14141b;
+    box-shadow: 0 20px 50px -16px rgba(0, 0, 0, 0.72);
+  }
+
+  .qr-dock__select option {
+    padding: 0.5rem 0.75rem;
+    border-radius: 10px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .qr-dock__select option:hover { background: rgb(var(--qr-tint) / 0.1); }
+  .qr-dock__select option:checked { background: rgb(var(--qr-tint) / 0.16); }
+  .qr-dock__select option::checkmark { display: none; }
 }
 
 /* ------------------------------------------------------------
@@ -1110,7 +1151,6 @@
   .glass,
   .glass-pill,
   .qr-input,
-  .qr-select,
   .qr-textarea,
   .qr-swatch,
   .qr-tile,

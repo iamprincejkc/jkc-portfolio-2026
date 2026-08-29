@@ -82,18 +82,12 @@ const percent = (value: number) => `${Math.round(value * 100)}%`
         @update:model-value="patch({ cornerRadius: $event })"
       />
 
-      <QrField label="Rotation" for="qr-rotation">
-        <select
-          id="qr-rotation"
-          class="qr-select"
-          :value="props.modelValue.rotation"
-          @change="patch({ rotation: ($event.target as HTMLSelectElement).value as RotationMode })"
-        >
-          <option v-for="option in ROTATIONS" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </option>
-        </select>
-      </QrField>
+      <QrSegmented
+        label="Rotation"
+        :model-value="props.modelValue.rotation"
+        :options="ROTATIONS"
+        @update:model-value="patch({ rotation: $event as RotationMode })"
+      />
 
       <QrSlider
         v-if="props.modelValue.rotation !== 'none'"
