@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, shallowRef, watch } from 'vue'
 import { buildScene, defaultStyle, scanRisk, type QrScene, type QrStyle } from '~/utils/qr/render'
-import { buildPayload, PLACEHOLDER_PAYLOAD, type QrContent } from '~/utils/qr/payload'
+import { buildPayload, emptyContent, PLACEHOLDER_PAYLOAD, type QrContent } from '~/utils/qr/payload'
 import { sceneToSvg } from '~/utils/qr/export-svg'
 import { exportScene, type ExportFormat } from '~/utils/qr/download'
 import { randomizeStyle, STYLE_FACETS, type StyleFacet } from '~/utils/qr/randomize'
@@ -29,14 +29,36 @@ useHead({
 /* ----------------------------------------------------------------
    State
 
-   Restored from the query string on first render so a shared link opens the
-   same code. `route.query` is read once rather than watched: the URL is
-   updated as the user edits, and reacting to our own writes would fight them.
+   Both renders start from the defaults, deliberately.
+
+   This route is prerendered, so the HTML on disk is always the default code.
+   Seeding client state from the query during setup makes the client's first
+   render disagree with that HTML, and Vue's hydration adopts the server DOM
+   rather than re-rendering - which left the panels showing defaults while the
+   state underneath already said Wi-Fi, with no subsequent change to trigger a
+   repaint. The symptom was a shared link that opened on the wrong tab and
+   fixed itself the moment you clicked anything.
+
+   Restoring after mount keeps the two renders byte-identical and then lets
+   ordinary reactivity apply the link. The dev server hides all of this,
+   because it renders per request with the query already in hand.
    ---------------------------------------------------------------- */
-const initial = queryToState(new URLSearchParams(route.query as Record<string, string>))
-const style = ref<QrStyle>(initial.style)
-const content = ref<QrContent>(initial.content)
+const style = ref<QrStyle>(defaultStyle())
+const content = ref<QrContent>(emptyContent())
 const locked = ref<Set<StyleFacet>>(new Set())
+
+onMounted(() => {
+  /*
+   * `route.query` rather than `window.location.search`: on a cold load of the
+   * prerendered page the browser's own search string is momentarily empty at
+   * this point, while the router has already parsed the real URL correctly.
+   */
+  const params = new URLSearchParams(route.query as Record<string, string>)
+  if ([...params.keys()].length === 0) return
+  const restored = queryToState(params)
+  style.value = restored.style
+  content.value = restored.content
+})
 
 const TABS: { value: string; label: string; icon: IconName }[] = [
   { value: 'content', label: 'Content', icon: 'content' },
