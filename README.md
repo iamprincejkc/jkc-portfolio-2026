@@ -35,7 +35,8 @@ jkc-portfolio/
 ├── tailwind.config.js         ← design tokens (colors, type scale, spacing)
 ├── app.vue                    ← root shell (header + page + footer)
 ├── pages/
-│   └── index.vue              ← composes all sections
+│   ├── index.vue              ← composes all sections
+│   └── qr-generator.vue       ← ★ the QR tool (see below)
 ├── components/
 │   ├── SiteHeader.vue         ← sticky header with hide-on-scroll
 │   ├── SiteFooter.vue
@@ -50,7 +51,23 @@ jkc-portfolio/
 ├── plugins/
 │   ├── lenis.client.ts        ← smooth scroll, ticks GSAP
 │   └── gsap.client.ts         ← registers ScrollTrigger
+├── layouts/
+│   └── tool.vue               ← chrome for the standalone tools
+├── utils/qr/                  ← the QR engine, framework-free and unit-tested
+│   ├── payload.ts             ← URL / Wi-Fi / vCard / vEvent encoding
+│   ├── matrix.ts              ← qrcode-generator wrapper + logo hole punch
+│   ├── shapes.ts              ← module and eye shape library
+│   ├── path-parse.ts          ← SVG path data → move/line/cubic/close
+│   ├── render.ts              ← style options → a drawable scene
+│   ├── export-svg.ts          ← scene → SVG
+│   ├── export-pdf.ts          ← scene → vector PDF, written by hand
+│   ├── export-eps.ts          ← scene → vector EPS
+│   ├── download.ts            ← PNG rasterising and saving (needs a DOM)
+│   ├── randomize.ts           ← "Randomize style" and its locks
+│   ├── share.ts               ← the whole editor state ↔ the query string
+│   └── logos.ts               ← GENERATED: brand marks, see scripts/
 ├── assets/css/main.css        ← base styles, marquee/rotator/header CSS
+├── assets/css/qr.css          ← the QR tool's liquid-glass system
 └── public/images/             ← your real project + skill assets
 ```
 
@@ -83,6 +100,42 @@ CSS-only too — two identical tracks side-by-side, both translating `0 → -100
 ### 5. Header hide-on-scroll
 
 `components/SiteHeader.vue` — vanilla `scroll` listener with `requestAnimationFrame` throttling. Toggles an `is-hidden` class based on scroll direction. `mix-blend-mode: difference` makes the text invert against whatever is behind it.
+
+## The QR generator (`/qr-generator`)
+
+Entirely client-side: there is no API behind it, so the page is prerendered
+alongside the homepage and nothing anyone types is ever uploaded.
+
+The engine stops at a **scene** - a background colour and an ordered list of
+filled paths in module coordinates. Every exporter draws that same scene, which
+is the only reason the PDF is guaranteed to match the preview. Shapes are built
+as command lists using only move / line / cubic / close, never arcs, because an
+arc is the one SVG command with no PDF or PostScript equivalent.
+
+PDF and EPS are written by hand rather than through a library. Both are vector,
+including gradients (PDF shadings, PostScript `shfill`) and brand logos. A
+PDF library plus its SVG plugin would be roughly 400 kB shipped to every
+visitor to write a document that uses about fifteen operators.
+
+Brand marks are baked into `utils/qr/logos.ts` at author time rather than
+imported at runtime. Regenerate them with:
+
+```bash
+node scripts/generate-qr-logos.mjs
+```
+
+Scannability is treated as a correctness property, not a nicety:
+
+- The three finder patterns are styled separately and never distorted.
+- A logo clears the modules under it rather than covering them, and raises
+  error correction to at least Q.
+- The randomiser draws from curated palettes, so a reroll cannot produce an
+  unscannable code.
+- The contrast ratio is shown live next to the colour pickers.
+
+Run the engine's tests with `npm test`. They cover payload escaping, the SVG
+path parser, shape geometry, the scene, and all three vector formats agreeing
+on their coordinates.
 
 ## Customizing
 

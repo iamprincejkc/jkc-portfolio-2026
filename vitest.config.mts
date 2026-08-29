@@ -1,16 +1,19 @@
 import { defineConfig } from 'vitest/config'
 
 /**
- * Unit tests for the server-side logic that guards the site: session tokens,
- * the PIN rate limiter, Cloudinary upload signing, and the webhook signature.
+ * Unit tests for the pure logic on both sides of the app.
  *
- * These are deliberately plain Node tests with no Nuxt runtime. Every module
+ * `server/` covers what guards the site: session tokens, the PIN rate limiter,
+ * Cloudinary upload signing, and the webhook signature.
+ *
+ * `utils/qr/` covers the QR generator's engine: payload encoding, SVG path
+ * parsing, shape geometry, and the scene the exporters draw from. Every module
  * under test is a pure function that takes its inputs as arguments, so none of
- * them need `useRuntimeConfig` or a request context.
+ * them need a Nuxt runtime, `useRuntimeConfig`, or a DOM.
  */
 export default defineConfig({
   test: {
     environment: 'node',
-    include: ['server/**/*.test.ts'],
+    include: ['server/**/*.test.ts', 'utils/**/*.test.ts'],
   },
 })

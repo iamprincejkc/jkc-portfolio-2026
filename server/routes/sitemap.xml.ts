@@ -1,11 +1,11 @@
 /**
  * sitemap.xml
  *
- * Lists only the public portfolio. /gallery and /evently are deliberately
- * absent: they are unlisted, and putting them here would be the fastest way to
- * get them indexed.
+ * Lists the public pages. /gallery and /evently are deliberately absent: they
+ * are unlisted, and putting them here would be the fastest way to get them
+ * indexed. /qr-generator is a genuinely public tool and belongs here.
  */
-const PUBLIC_ROUTES = ['/']
+const PUBLIC_ROUTES = ['/', '/qr-generator']
 
 export default defineEventHandler((event) => {
   const siteUrl = String(useRuntimeConfig().public.siteUrl ?? '').replace(/\/$/, '')

@@ -16,6 +16,7 @@ const year = new Date().getFullYear()
           <li><a href="#work" class="tap-safe hover:text-accent transition-colors">Work</a></li>
           <li><a href="#about" class="tap-safe hover:text-accent transition-colors">About</a></li>
           <li><a href="#contact" class="tap-safe hover:text-accent transition-colors">Contact</a></li>
+          <li><NuxtLink to="/qr-generator" class="tap-safe hover:text-accent transition-colors">QR generator</NuxtLink></li>
         </ul>
       </div>
 

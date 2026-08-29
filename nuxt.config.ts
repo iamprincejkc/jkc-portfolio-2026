@@ -5,7 +5,7 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxt/image'],
 
-  css: ['~/assets/css/main.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/qr.css'],
 
   app: {
     head: {
@@ -34,9 +34,6 @@ export default defineNuxtConfig({
           rel: 'stylesheet',
           href: 'https://api.fontshare.com/v2/css?f[]=general-sans@500,600,400&f[]=melodrama@500,400&display=swap',
         },
-        // The hero mosaic is the LCP element and is painted from CSS
-        // background-image, which the preload scanner cannot discover.
-        { rel: 'preload', as: 'image', href: '/images/main.webp', fetchpriority: 'high' },
       ],
     },
   },
@@ -100,6 +97,14 @@ export default defineNuxtConfig({
     '/': { prerender: true },
 
     /*
+     * The QR generator does all of its work in the browser - there is no API
+     * behind it - so the page itself is static and prerendered alongside the
+     * homepage. Shared links carry their state in the query string, which the
+     * page reads on the client.
+     */
+    '/qr-generator': { prerender: true },
+
+    /*
      * The gallery is per-request by definition: it reads the session cookie.
      * `noindex` is belt-and-braces alongside robots.txt and the Netlify
      * X-Robots-Tag headers, for the case where a link leaks.
@@ -123,6 +128,6 @@ export default defineNuxtConfig({
     // `npm run build` honest when run anywhere else.
     // robots and the sitemap never change per request, so they are baked at
     // build time and served straight from the CDN.
-    prerender: { crawlLinks: false, routes: ['/', '/robots.txt', '/sitemap.xml'] },
+    prerender: { crawlLinks: false, routes: ['/', '/qr-generator', '/robots.txt', '/sitemap.xml'] },
   },
 })
