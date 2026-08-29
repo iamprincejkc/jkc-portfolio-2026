@@ -174,7 +174,14 @@ async function download(format: ExportFormat) {
 
 async function copyLink() {
   const query = stateToQuery(style.value, content.value).toString()
-  const url = `${siteUrl || window.location.origin}/qr-generator?${query}`
+  /*
+   * Built from the address the visitor is actually on, not from the canonical
+   * site URL in config. Those differ on Netlify previews, on the raw
+   * *.netlify.app host and on localhost, and a "copy link" that quietly
+   * rewrites the origin hands back a URL to a different deployment.
+   */
+  const { origin, pathname } = window.location
+  const url = `${origin}${pathname.replace(/\/$/, '')}?${query}`
   try {
     await navigator.clipboard.writeText(url)
     say('Link copied. It carries the style, but never a Wi-Fi password or an uploaded logo.')
@@ -312,7 +319,19 @@ onUnmounted(() => window.removeEventListener('keydown', onKeydown))
         />
       </div>
 
-      <div id="qr-panel" class="qr-inspector__body" role="tabpanel" :aria-labelledby="`qr-tab-${tab}`">
+      <!--
+        `data-lenis-prevent` is required, not decorative. Lenis runs site-wide
+        with `smoothWheel`, which swallows wheel events before they reach any
+        inner scroller - so this panel would simply refuse to scroll while the
+        page behind it moved instead.
+      -->
+      <div
+        id="qr-panel"
+        class="qr-inspector__body"
+        data-lenis-prevent
+        role="tabpanel"
+        :aria-labelledby="`qr-tab-${tab}`"
+      >
         <QrContentPanel v-if="tab === 'content'" v-model="content" v-model:qr-style="style" />
         <QrShapePanel v-else-if="tab === 'shape'" v-model="style" />
         <QrColorPanel v-else-if="tab === 'color'" v-model="style" />

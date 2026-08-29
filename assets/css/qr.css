@@ -56,6 +56,17 @@
   /* iOS's own interruptible-spring curve, as close as a bezier gets. */
   --qr-spring: cubic-bezier(0.32, 0.72, 0, 1);
 
+  /*
+   * Everything the browser draws itself - select popups, the colour picker,
+   * the date picker and its icon, scrollbars - is themed by `color-scheme`,
+   * not by our CSS. Without this the page is dark while every one of those
+   * renders light, and hand-colouring `option` backgrounds to compensate only
+   * fights the native theming instead of replacing it. `accent-color` covers
+   * the bits of native chrome that remain.
+   */
+  color-scheme: dark;
+  accent-color: var(--qr-accent);
+
   position: relative;
   min-height: 100dvh;
   isolation: isolate;
@@ -740,8 +751,6 @@
   background-repeat: no-repeat;
   cursor: pointer;
 }
-
-.qr-select option { background: #16161c; color: #fff; }
 
 /* ------------------------------------------------------------
    Slider
