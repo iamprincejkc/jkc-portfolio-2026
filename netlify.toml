@@ -12,12 +12,31 @@
 # It would shadow every server-rendered route, including /gate and /gallery.
 # Nitro handles routing now.
 
+# Security headers for everything the CDN serves directly: the prerendered
+# pages, the JS and CSS bundles, the images, the workflow JSON.
+#
+# `server/middleware/security-headers.ts` carries the identical set for
+# responses produced by the SSR function, which these rules do not reliably
+# reach. The duplication is deliberate - neither one covers the other's
+# traffic - so the two must be changed together.
+#
+# On `script-src 'unsafe-inline'`: Nuxt writes an inline bootstrap into every
+# prerendered page and /n8n adds an inline theme script that must run before
+# first paint. A nonce cannot exist on a page rendered at build time, and
+# hashes would need regenerating every build with a blank production page as
+# the failure mode. Everything that can be locked down is; the note in the
+# middleware explains the rest.
 [[headers]]
   for = "/*"
   [headers.values]
+    Content-Security-Policy = "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com; font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com; img-src 'self' data: blob: https://res.cloudinary.com https://lastfm.freetls.fastly.net; connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com; media-src 'self'; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+    Strict-Transport-Security = "max-age=63072000; includeSubDomains; preload"
+    X-Frame-Options = "DENY"
     X-Content-Type-Options = "nosniff"
     Referrer-Policy = "strict-origin-when-cross-origin"
-    Permissions-Policy = "camera=(), microphone=(), geolocation=()"
+    Cross-Origin-Opener-Policy = "same-origin"
+    Cross-Origin-Resource-Policy = "same-site"
+    Permissions-Policy = "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(self), geolocation=(), gyroscope=(), interest-cohort=(), magnetometer=(), microphone=(), midi=(), payment=(), usb=(), xr-spatial-tracking=()"
 
 # Unlisted routes: keep them out of search results even if a link leaks.
 [[headers]]

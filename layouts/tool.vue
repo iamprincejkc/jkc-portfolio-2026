@@ -17,10 +17,21 @@ const route = useRoute()
 // The page names itself through `definePageMeta`; a layout cannot take props
 // when it is selected by meta rather than mounted by hand.
 const title = computed(() => String(route.meta.toolTitle ?? 'Tools'))
+
+/**
+ * Tools do not all sit on the same colour.
+ *
+ * The default chrome is white glass, which needs a dark page behind it; the
+ * n8n library is a light one and would render the back button as white on
+ * near-white. Rather than teach this layout about every tool, it stamps the
+ * page's chosen theme onto the wrapper and lets that tool's own stylesheet
+ * replace the material.
+ */
+const theme = computed(() => (route.meta.toolTheme ? `tool-chrome--${route.meta.toolTheme}` : ''))
 </script>
 
 <template>
-  <div>
+  <div :class="theme">
     <a href="#tool-main" class="tool-skip">Skip to content</a>
 
     <header class="tool-header">

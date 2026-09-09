@@ -5,6 +5,7 @@ import {
   renderAutoReply,
   renderContactEmail,
   renderContactText,
+  siteHost,
   subjectSnippet,
   type ContactMessage,
 } from './contact-email'
@@ -16,6 +17,37 @@ const base: ContactMessage = {
   receivedAt: 'Sat, 15 Aug, 08:32 pm',
   siteUrl: 'https://iamjkc.space',
 }
+
+describe('site host', () => {
+  const moved: ContactMessage = { ...base, siteUrl: 'https://example.dev' }
+
+  it('takes the host from the configured site URL, not from the template', () => {
+    // The point of the whole exercise: moving to a new domain is one
+    // environment variable, not a hunt through an email template.
+    for (const html of [renderContactEmail(moved), renderAutoReply(moved)]) {
+      expect(html).toContain('example.dev')
+      expect(html).not.toContain('iamjkc.space')
+    }
+    expect(renderContactText(moved)).toContain('example.dev')
+  })
+
+  it('brands the reply subject with the current host', () => {
+    expect(renderContactEmail(moved)).toContain('Re%3A%20your%20message%20via%20example.dev')
+  })
+
+  it('survives a site URL that is not a valid URL', () => {
+    // A misconfigured NUXT_PUBLIC_SITE_URL must not take the contact form
+    // down - the message still has to get through.
+    expect(siteHost('not a url')).toBe('not a url')
+    expect(siteHost('')).toBe('')
+    expect(() => renderContactEmail({ ...base, siteUrl: 'nonsense' })).not.toThrow()
+  })
+
+  it('drops the scheme and any path', () => {
+    expect(siteHost('https://iamprincejkc.netlify.app/')).toBe('iamprincejkc.netlify.app')
+    expect(siteHost('https://example.dev/a/b?c=1')).toBe('example.dev')
+  })
+})
 
 describe('escaping', () => {
   it('escapes HTML in every field the sender controls', () => {

@@ -1,0 +1,1557 @@
+/* ============================================================
+   n8n workflow library (/n8n)
+
+   Claymorphism, and what actually makes something look like clay.
+
+   The mistake is to reach for one big drop shadow. A drop shadow puts an
+   object *above* a surface; clay is a solid lump with its own thickness, and
+   the eye reads thickness from four things happening at once:
+
+     1. A bright inner rim along the top edge, where a light above the object
+        catches the curve as it rolls over. This is the single most important
+        one - remove it and every panel flattens back into a card.
+     2. A soft inner shade along the bottom inner edge, the far side of the
+        same curve turning away from that light.
+     3. A wide, low-contrast drop shadow tinted with the background's own hue
+        rather than black. Grey shadows on a lavender ground read as dirt.
+     4. Radii large enough to look moulded rather than cut - and nested, so an
+        inner element's radius is smaller than its parent's by roughly the gap
+        between them. Equal radii inside and out is what makes rounded UI look
+        like a sticker instead of an object.
+
+   Press states then have to remove 1 and 2 and replace them with the inverse,
+   because a clay button that only scales looks like a picture of a button
+   being pressed. Pressing swaps the rim to the bottom and sinks the shade to
+   the top: the light has not moved, the surface has.
+
+   ---------------------------------------------------------------------------
+   Theming
+
+   Every colour is a token, declared twice: once for light, once under
+   `html[data-n8-theme='dark']`. The attribute is always explicit - an inline
+   script in the page resolves the system preference into it before first
+   paint - so there is one dark block rather than one for the media query and
+   another for the override. It also sets `color-scheme`, which is what makes
+   the browser's own scrollbar match the page instead of staying dark on a
+   light one.
+
+   Dark clay is not light clay with the colours flipped. The rim highlight has
+   to drop to about a tenth of its opacity or every panel looks wet, and the
+   drop shadow goes nearly black because there is no longer a bright ground
+   for it to tint against.
+   ============================================================ */
+
+/*
+ * The material, declared on both the page and the layout wrapper the page
+ * asks for. The tool layout's back button floats outside `.n8-app` - it is a
+ * sibling of the page, not a child - so tokens declared only on the page
+ * would not reach it, and it would fall back to white-on-white.
+ */
+.n8-app,
+.tool-chrome--clay {
+  /* --- Ground and ink ------------------------------------------------- */
+  --n8-bg: #f1edfa;
+  --n8-bg-deep: #e7e1f6;
+  --n8-surface: #ffffff;
+  --n8-surface-sunk: #ebe6f7;
+  --n8-ink: #2c2839;
+  --n8-ink-soft: #635d78;
+  --n8-ink-faint: #8c86a3;
+
+  /* --- Accents -------------------------------------------------------- */
+  /* Coral is n8n's own; the rest are the node-kind colours. */
+  --n8-coral: #ea4b71;
+  --n8-coral-deep: #c92f55;
+  --n8-coral-ink: #ffffff;
+  --n8-violet: #7c5cf0;
+  --n8-mint: #16a97a;
+  --n8-sky: #2b93d6;
+  --n8-amber: #d98514;
+
+  /* --- Tag fills ------------------------------------------------------ */
+  --n8-tag-trigger-bg: rgba(22, 169, 122, 0.15);
+  --n8-tag-trigger-ink: #0d7a57;
+  --n8-tag-steps-bg: rgba(43, 147, 214, 0.14);
+  --n8-tag-steps-ink: #1d6ba0;
+  --n8-tag-advanced-bg: rgba(217, 133, 20, 0.16);
+  --n8-tag-advanced-ink: #9a5c05;
+
+  /* --- The diagram ---------------------------------------------------- */
+  --n8-grid-dot: rgba(108, 88, 160, 0.22);
+  --n8-node-rim: rgba(255, 255, 255, 0.75);
+  --n8-node-shadow: #4a3482;
+  --n8-node-shadow-opacity: 0.32;
+  --n8-caption: #453f57;
+  --n8-caption-soft: #8c86a3;
+  --n8-edge: #b3a9cf;
+  --n8-edge-ai: #c3aef2;
+
+  /* --- Sticky notes --------------------------------------------------- */
+  --n8-note: #fff8e0;
+  --n8-note-canvas: #fff6d6;
+  --n8-note-edge: #f0dfa4;
+  --n8-note-ink: #4b4123;
+  --n8-note-ink-strong: #3a3117;
+  --n8-note-ink-soft: #7a6a3a;
+  --n8-note-link: #9a5c05;
+  --n8-note-rule: rgba(140, 110, 30, 0.25);
+  --n8-note-code: rgba(120, 96, 40, 0.14);
+  --n8-note-shadow:
+    0 8px 18px -10px rgba(120, 96, 40, 0.5),
+    inset 0 -6px 10px -7px rgba(140, 110, 30, 0.35),
+    inset 0 6px 9px -6px rgba(255, 255, 255, 0.95);
+
+  /* --- Radii, nested ---------------------------------------------------
+     Each step is roughly the previous one minus the padding that separates
+     them, which is what keeps concentric corners looking concentric. */
+  --n8-r-xl: 34px;
+  --n8-r-lg: 26px;
+  --n8-r-md: 18px;
+  --n8-r-sm: 12px;
+  --n8-r-pill: 999px;
+
+  /* --- The material ----------------------------------------------------
+     `--n8-lift` is the raised state, `--n8-press` its inverse. Both are
+     tinted with the ground's violet rather than black. */
+  --n8-lift:
+    0 1px 2px rgba(74, 52, 130, 0.05),
+    0 10px 22px -10px rgba(74, 52, 130, 0.28),
+    inset 0 -7px 12px -7px rgba(104, 80, 165, 0.32),
+    inset 0 7px 10px -6px rgba(255, 255, 255, 0.95);
+
+  --n8-lift-high:
+    0 2px 4px rgba(74, 52, 130, 0.06),
+    0 22px 40px -16px rgba(74, 52, 130, 0.36),
+    inset 0 -9px 16px -9px rgba(104, 80, 165, 0.34),
+    inset 0 9px 12px -7px rgba(255, 255, 255, 0.98);
+
+  --n8-press:
+    inset 0 4px 9px -2px rgba(74, 52, 130, 0.26),
+    inset 0 -3px 6px -3px rgba(255, 255, 255, 0.85);
+
+  /* A recessed well: search fields, tracks, the diagram stage. */
+  --n8-sunk:
+    inset 0 3px 7px -1px rgba(74, 52, 130, 0.18),
+    inset 0 -2px 4px -2px rgba(255, 255, 255, 0.9);
+
+  --n8-cta:
+    0 10px 22px -10px rgba(201, 47, 85, 0.75),
+    inset 0 -7px 12px -7px rgba(140, 20, 55, 0.6),
+    inset 0 7px 10px -6px rgba(255, 255, 255, 0.55);
+
+  --n8-backdrop: rgba(38, 22, 72, 0.42);
+  --n8-dialog-shadow: 0 40px 90px -30px rgba(45, 24, 90, 0.6);
+
+  /* --- The ground itself -----------------------------------------------
+     Four radial washes painted straight into the background rather than
+     four blurred elements floating over it.
+
+     The elements came first and were a mistake: a `blur(90px)` filter on a
+     46vmax box is three composited layers, and animating `scale()` on one
+     forces the browser to re-rasterise that blur on every frame for as long
+     as the page is open. Gradients are painted once, promote nothing, and
+     look the same. */
+  --n8-field:
+    radial-gradient(58% 44% at 12% 4%, rgba(234, 75, 113, 0.30), transparent 70%),
+    radial-gradient(52% 40% at 92% 26%, rgba(124, 92, 240, 0.28), transparent 72%),
+    radial-gradient(60% 46% at 68% 82%, rgba(75, 192, 229, 0.22), transparent 74%),
+    radial-gradient(48% 38% at 26% 68%, rgba(255, 155, 120, 0.16), transparent 72%);
+
+  /* --- Motion ----------------------------------------------------------
+     One spring for everything that squishes, one ease for everything that
+     merely moves. Mixing curves is what makes an interface feel assembled
+     from parts. */
+  --n8-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --n8-ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+html[data-n8-theme='dark'] :is(.n8-app, .tool-chrome--clay) {
+  --n8-bg: #161324;
+  --n8-bg-deep: #100e1c;
+  --n8-surface: #241f38;
+  --n8-surface-sunk: #1b172a;
+  --n8-ink: #eceaf7;
+  --n8-ink-soft: #a8a2c4;
+  --n8-ink-faint: #7b7597;
+
+  --n8-coral: #ff5f83;
+  --n8-coral-deep: #ff85a1;
+  --n8-coral-ink: #2a0a14;
+  --n8-violet: #9b82ff;
+  --n8-mint: #35d69f;
+  --n8-sky: #62b9f5;
+  --n8-amber: #f2ad46;
+
+  --n8-tag-trigger-bg: rgba(53, 214, 159, 0.16);
+  --n8-tag-trigger-ink: #6fe4bd;
+  --n8-tag-steps-bg: rgba(98, 185, 245, 0.16);
+  --n8-tag-steps-ink: #8ecdf8;
+  --n8-tag-advanced-bg: rgba(242, 173, 70, 0.18);
+  --n8-tag-advanced-ink: #f6c47c;
+
+  --n8-grid-dot: rgba(160, 140, 220, 0.18);
+  --n8-node-rim: rgba(255, 255, 255, 0.22);
+  --n8-node-shadow: #000000;
+  --n8-node-shadow-opacity: 0.55;
+  --n8-caption: #d9d4ec;
+  --n8-caption-soft: #8f88ad;
+  --n8-edge: #5b5379;
+  --n8-edge-ai: #7a63bd;
+
+  --n8-note: #33291a;
+  --n8-note-canvas: #2f2617;
+  --n8-note-edge: #5a4a2a;
+  --n8-note-ink: #e7dcc2;
+  --n8-note-ink-strong: #f6efdc;
+  --n8-note-ink-soft: #b9a87f;
+  --n8-note-link: #f0c274;
+  --n8-note-rule: rgba(230, 200, 140, 0.22);
+  --n8-note-code: rgba(230, 200, 140, 0.14);
+  --n8-note-shadow:
+    0 10px 22px -12px rgba(0, 0, 0, 0.8),
+    inset 0 -6px 10px -7px rgba(0, 0, 0, 0.6),
+    inset 0 6px 9px -6px rgba(255, 255, 255, 0.09);
+
+  /*
+   * The rim drops from 0.95 to 0.10. At light-mode opacity every panel looks
+   * wet rather than moulded - there is no bright room for the highlight to be
+   * a reflection of.
+   */
+  --n8-lift:
+    0 1px 2px rgba(0, 0, 0, 0.4),
+    0 12px 26px -12px rgba(0, 0, 0, 0.72),
+    inset 0 -7px 12px -7px rgba(0, 0, 0, 0.55),
+    inset 0 7px 10px -6px rgba(255, 255, 255, 0.1);
+
+  --n8-lift-high:
+    0 2px 6px rgba(0, 0, 0, 0.45),
+    0 24px 44px -18px rgba(0, 0, 0, 0.8),
+    inset 0 -9px 16px -9px rgba(0, 0, 0, 0.6),
+    inset 0 9px 12px -7px rgba(255, 255, 255, 0.13);
+
+  --n8-press:
+    inset 0 4px 9px -2px rgba(0, 0, 0, 0.6),
+    inset 0 -3px 6px -3px rgba(255, 255, 255, 0.07);
+
+  --n8-sunk:
+    inset 0 3px 7px -1px rgba(0, 0, 0, 0.5),
+    inset 0 -2px 4px -2px rgba(255, 255, 255, 0.05);
+
+  --n8-cta:
+    0 10px 22px -10px rgba(255, 95, 131, 0.45),
+    inset 0 -7px 12px -7px rgba(120, 15, 45, 0.55),
+    inset 0 7px 10px -6px rgba(255, 255, 255, 0.28);
+
+  --n8-backdrop: rgba(6, 4, 14, 0.62);
+  --n8-dialog-shadow: 0 40px 90px -30px rgba(0, 0, 0, 0.85);
+
+  --n8-field:
+    radial-gradient(58% 44% at 12% 4%, rgba(234, 75, 113, 0.20), transparent 70%),
+    radial-gradient(52% 40% at 92% 26%, rgba(124, 92, 240, 0.22), transparent 72%),
+    radial-gradient(60% 46% at 68% 82%, rgba(40, 140, 190, 0.18), transparent 74%),
+    radial-gradient(48% 38% at 26% 68%, rgba(255, 120, 90, 0.10), transparent 72%);
+}
+
+/* ============================================================
+   Shell
+   ============================================================ */
+.n8-app {
+  position: relative;
+  isolation: isolate;
+  min-block-size: 100dvh;
+  padding-block: 5.5rem 4rem;
+  /*
+   * The colour field is `background-attachment: fixed` so it behaves the way
+   * the old floating blobs did - staying put while the page scrolls past -
+   * without any of them existing.
+   */
+  background: var(--n8-field), var(--n8-bg);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+  color: var(--n8-ink);
+  font-family: 'DM Sans', 'General Sans', system-ui, sans-serif;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 1.55;
+  accent-color: var(--n8-coral);
+  overflow-x: clip;
+}
+
+.n8-shell {
+  inline-size: min(1400px, 100% - 2.5rem);
+  margin-inline: auto;
+}
+
+@media (min-width: 768px) {
+  .n8-shell { inline-size: min(1400px, 100% - 4rem); }
+}
+
+/* --- Scrollbars ------------------------------------------------------
+   The site around this page is near-black, so the document's own scrollbar
+   is drawn dark and sits beside a light page looking like a leftover from
+   somewhere else. `color-scheme` on the root is what actually fixes that -
+   set by the page, alongside the theme - and `scrollbar-color` then tints
+   the thumb to match the clay rather than the browser's default grey.
+   --------------------------------------------------------------------- */
+html[data-n8-theme] {
+  scrollbar-width: thin;
+}
+
+html[data-n8-theme='light'] {
+  color-scheme: light;
+  scrollbar-color: #c9c0e4 transparent;
+}
+
+html[data-n8-theme='dark'] {
+  color-scheme: dark;
+  scrollbar-color: #3a3356 transparent;
+}
+
+/* The inner scrollers - the filter rail and the dialog's panels. */
+.n8-app :is(.n8-scroll, .n8-rail, .n8-detail__panel) {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--n8-ink-faint) 45%, transparent) transparent;
+}
+
+/* --- The tool layout's back button, in clay --------------------------
+   The default chrome is white glass for a near-black page and would be
+   invisible here, so the layout tags itself with the page's theme and this
+   replaces the material without touching the layout's markup.
+   --------------------------------------------------------------------- */
+.tool-chrome--clay .tool-header__back {
+  border: none;
+  background: var(--n8-surface, #fff);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  border-radius: var(--n8-r-pill, 999px);
+  box-shadow: var(--n8-lift);
+  min-block-size: 44px;
+  font-family: 'Nunito', 'General Sans', system-ui, sans-serif;
+  font-weight: 700;
+  transition: transform 260ms var(--n8-spring), box-shadow 260ms var(--n8-ease);
+}
+
+.tool-chrome--clay .tool-header__brand { color: var(--n8-ink); }
+.tool-chrome--clay .tool-header__sep { color: var(--n8-ink-faint); }
+.tool-chrome--clay .tool-header__title { color: var(--n8-ink-soft); }
+.tool-chrome--clay .tool-header__back:hover { transform: translateY(-2px); box-shadow: var(--n8-lift-high); }
+.tool-chrome--clay .tool-header__back:hover .tool-header__title { color: var(--n8-ink); }
+.tool-chrome--clay .tool-header__back:active { transform: scale(0.96); box-shadow: var(--n8-press); }
+
+.tool-chrome--clay .tool-skip:focus {
+  background: var(--n8-coral);
+  color: var(--n8-coral-ink);
+}
+
+/* ============================================================
+   Typography
+   ============================================================ */
+.n8-app :is(h1, h2, h3) {
+  font-family: 'Nunito', 'General Sans', system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--n8-ink);
+}
+
+.n8-eyebrow {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--n8-ink-faint);
+}
+
+/* ============================================================
+   Hero
+   ============================================================ */
+.n8-hero {
+  display: grid;
+  gap: 1.5rem;
+  margin-block-end: 2rem;
+}
+
+.n8-hero__top {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.n8-hero__mark {
+  inline-size: 68px;
+  block-size: 68px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--n8-r-lg);
+  background: linear-gradient(150deg, #ff7d9b, var(--n8-coral) 55%, var(--n8-coral-deep));
+  box-shadow: var(--n8-lift-high);
+  color: #fff;
+}
+
+.n8-hero__title {
+  font-size: clamp(38px, 7vw, 68px);
+  margin-block: 0.6rem 0;
+}
+
+.n8-hero__lede {
+  max-inline-size: 62ch;
+  font-size: clamp(16px, 1.6vw, 19px);
+  color: var(--n8-ink-soft);
+  margin-block-start: 0.75rem;
+}
+
+/* --- Theme toggle ----------------------------------------------------
+   Both glyphs are always in the markup and CSS picks one. The alternative -
+   rendering the right icon from JavaScript - would disagree with the
+   prerendered HTML on the first frame, which is the one frame a theme switch
+   must not get wrong.
+   --------------------------------------------------------------------- */
+.n8-theme {
+  flex: none;
+  inline-size: 46px;
+  block-size: 46px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  color: var(--n8-ink-soft);
+  cursor: pointer;
+  transition: transform 280ms var(--n8-spring), box-shadow 260ms var(--n8-ease), color 200ms var(--n8-ease);
+}
+
+.n8-theme:hover { transform: translateY(-2px); color: var(--n8-ink); box-shadow: var(--n8-lift-high); }
+.n8-theme:active { transform: scale(0.92); box-shadow: var(--n8-press); }
+
+.n8-theme > * { grid-area: 1 / 1; }
+.n8-theme__moon { display: none; }
+
+html[data-n8-theme='dark'] .n8-theme__sun { display: none; }
+html[data-n8-theme='dark'] .n8-theme__moon { display: block; }
+
+/* ============================================================
+   Search
+   ============================================================ */
+.n8-search {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.4rem 0.5rem 0.4rem 1.25rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  transition: box-shadow 260ms var(--n8-ease), transform 260ms var(--n8-spring);
+}
+
+.n8-search:focus-within {
+  transform: translateY(-2px);
+  box-shadow:
+    var(--n8-lift-high),
+    0 0 0 4px color-mix(in srgb, var(--n8-coral) 30%, transparent);
+}
+
+.n8-search__icon {
+  flex: none;
+  color: var(--n8-ink-faint);
+}
+
+.n8-search__input {
+  flex: 1 1 auto;
+  min-inline-size: 0;
+  border: none;
+  background: none;
+  padding-block: 0.85rem;
+  font: inherit;
+  font-size: clamp(16px, 1.6vw, 18px);
+  color: var(--n8-ink);
+}
+
+.n8-search__input::placeholder { color: var(--n8-ink-faint); }
+.n8-search__input:focus { outline: none; }
+/* The native clear button is a grey ✕ that does not belong on clay. */
+.n8-search__input::-webkit-search-cancel-button { display: none; }
+
+.n8-search__clear {
+  flex: none;
+  inline-size: 40px;
+  block-size: 40px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  color: var(--n8-ink-soft);
+  cursor: pointer;
+  transition: transform 200ms var(--n8-spring), background 200ms var(--n8-ease);
+}
+
+.n8-search__clear:hover { background: var(--n8-bg-deep); color: var(--n8-ink); }
+.n8-search__clear:active { transform: scale(0.9); }
+
+.n8-searchbar {
+  display: grid;
+  gap: 0.75rem;
+  margin-block-end: 1.5rem;
+}
+
+.n8-searchbar__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding-inline: 0.35rem;
+  font-size: 14px;
+  color: var(--n8-ink-soft);
+}
+
+.n8-searchbar__count { font-weight: 700; color: var(--n8-ink); }
+
+/* ============================================================
+   Chips - the one interactive primitive this page repeats
+   ============================================================ */
+.n8-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-block-size: 40px;
+  padding-inline: 0.95rem;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  color: var(--n8-ink-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    transform 240ms var(--n8-spring),
+    box-shadow 240ms var(--n8-ease),
+    background 200ms var(--n8-ease),
+    color 200ms var(--n8-ease);
+}
+
+.n8-chip:hover { transform: translateY(-2px); color: var(--n8-ink); }
+.n8-chip:active { transform: scale(0.95); box-shadow: var(--n8-press); }
+
+.n8-chip[aria-pressed='true'] {
+  background: var(--n8-coral);
+  color: var(--n8-coral-ink);
+  font-weight: 700;
+  box-shadow: var(--n8-cta);
+}
+
+.n8-chip[aria-pressed='true']:hover { transform: translateY(-2px); }
+
+.n8-chip__label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.n8-chip__count {
+  flex: none;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--n8-ink-faint);
+}
+
+.n8-chip[aria-pressed='true'] .n8-chip__count { color: color-mix(in srgb, var(--n8-coral-ink) 70%, transparent); }
+
+/* A chip that is a label, not a control. */
+.n8-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.62rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  color: var(--n8-ink-soft);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.n8-tag--trigger { background: var(--n8-tag-trigger-bg); color: var(--n8-tag-trigger-ink); }
+.n8-tag--steps { background: var(--n8-tag-steps-bg); color: var(--n8-tag-steps-ink); }
+.n8-tag--advanced { background: var(--n8-tag-advanced-bg); color: var(--n8-tag-advanced-ink); }
+
+/* ============================================================
+   Filter rail
+   ============================================================ */
+.n8-body {
+  display: grid;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (min-width: 1080px) {
+  .n8-body { grid-template-columns: 264px minmax(0, 1fr); gap: 2rem; }
+}
+
+.n8-rail {
+  display: grid;
+  gap: 1.25rem;
+  padding: 1.35rem;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+}
+
+@media (min-width: 1080px) {
+  .n8-rail {
+    position: sticky;
+    /* Clear of the floating back button. */
+    inset-block-start: 5.5rem;
+    max-block-size: calc(100dvh - 7.5rem);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    /*
+     * Reserved rather than claimed when needed, so filtering down to a short
+     * list does not shift every row sideways as the scrollbar disappears.
+     */
+    scrollbar-gutter: stable;
+  }
+}
+
+/*
+ * Whether the rail is on screen is a question about the viewport, so it is
+ * answered here rather than by a `v-show` that would have to be told the
+ * breakpoint twice.
+ */
+.n8-rail-host { display: none; }
+.n8-rail-host[data-open='true'] { display: block; }
+
+@media (min-width: 1080px) {
+  .n8-rail-host { display: block; }
+}
+
+/*
+ * `min-inline-size: 0` at every level between the rail and the chip label.
+ *
+ * A grid or flex item defaults to `min-width: auto`, which means "never
+ * smaller than my content" - and the chips are `white-space: nowrap`, so the
+ * longest category name propagated all the way up and made the options
+ * container 304px wide inside a 264px rail. Truncating the label cannot
+ * happen until every ancestor has been told it is allowed to be narrower than
+ * its contents.
+ */
+.n8-rail,
+.n8-rail__group,
+.n8-rail__options,
+.n8-rail__options .n8-chip {
+  min-inline-size: 0;
+}
+
+.n8-rail__group { display: grid; gap: 0.6rem; }
+
+/*
+ * Rows, not wrapped pills.
+ *
+ * "Cloud Storage & File Management" is wider than the 264px rail, and a chip
+ * that does not wrap simply runs off the edge - which is what this looked
+ * like before. Full-width rows with the label truncated and the count pushed
+ * right also make the numbers a column you can read down, which is the whole
+ * point of showing them.
+ *
+ * A track minimum rather than one hard column, because the same rail is the
+ * full width of the page below the breakpoint, where one column of rows would
+ * be a very wide, very empty list.
+ */
+.n8-rail__options {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr));
+  gap: 0.4rem;
+}
+
+.n8-rail__options .n8-chip {
+  inline-size: 100%;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.n8-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.n8-rail__reset {
+  justify-self: start;
+  min-block-size: 36px;
+  padding-inline: 0.9rem;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  color: var(--n8-ink-soft);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: transform 200ms var(--n8-spring), color 200ms var(--n8-ease);
+}
+
+.n8-rail__reset:hover { color: var(--n8-coral-deep); }
+.n8-rail__reset:active { transform: scale(0.95); }
+
+/* Below the rail breakpoint the same content collapses behind one button. */
+.n8-rail-toggle { display: flex; gap: 0.6rem; }
+
+@media (min-width: 1080px) {
+  .n8-rail-toggle { display: none; }
+}
+
+/* ============================================================
+   Result grid
+   ============================================================ */
+.n8-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr));
+}
+
+.n8-card {
+  /*
+   * `content-visibility` on the cards, not on the grid: the page can grow to
+   * several hundred results, and the browser would otherwise lay out and
+   * paint every one of them on the frame they arrive. The intrinsic size is
+   * the card's real height, so the scrollbar does not jump as rows come into
+   * view.
+   */
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 236px;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border: none;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 300ms var(--n8-spring), box-shadow 300ms var(--n8-ease);
+}
+
+.n8-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--n8-lift-high);
+}
+
+.n8-card:active { transform: scale(0.985) translateY(-1px); }
+
+.n8-card__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.n8-card__title {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 17px;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.n8-card__summary {
+  flex: 1 1 auto;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--n8-ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.n8-card__foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+/* ============================================================
+   Compact view
+
+   The same results as a list. Four times as many on screen, names in a
+   column you can run your eye down, and the summary reduced to whatever is
+   left over on the same line.
+   ============================================================ */
+.n8-rows {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.n8-row {
+  /* Rows are cheap, but there can be several hundred of them. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto none auto 58px;
+
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 0.9rem;
+  min-inline-size: 0;
+  padding: 0.6rem 1rem 0.6rem 0.75rem;
+  border: none;
+  border-radius: var(--n8-r-md);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  text-align: start;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  transition: transform 240ms var(--n8-spring), box-shadow 240ms var(--n8-ease);
+}
+
+.n8-row:hover { transform: translateY(-2px); box-shadow: var(--n8-lift-high); }
+.n8-row:active { transform: scale(0.995); box-shadow: var(--n8-press); }
+
+.n8-row .n8-bubble {
+  inline-size: 28px;
+  block-size: 28px;
+  font-size: 11px;
+}
+
+/*
+ * `baseline` rather than `center`, so the summary sits on the same line as
+ * the name it follows instead of floating beside it.
+ */
+.n8-row__text {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  min-inline-size: 0;
+}
+
+.n8-row__name {
+  flex: 0 1 auto;
+  min-inline-size: 0;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.n8-row__summary {
+  /* Takes what is left after the name, and nothing when there is nothing. */
+  flex: 1 1 0;
+  min-inline-size: 0;
+  font-size: 13px;
+  color: var(--n8-ink-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.n8-row__meta {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/*
+ * Below these widths the meta and the summary are competing with the name
+ * for the same line, and the name is the thing being scanned for.
+ */
+@media (max-width: 720px) {
+  .n8-row__summary { display: none; }
+}
+
+@media (max-width: 520px) {
+  .n8-row__meta .n8-tag--trigger { display: none; }
+}
+
+/* --- The view switch ------------------------------------------------- */
+.n8-views {
+  display: inline-flex;
+  gap: 0.2rem;
+  padding: 0.25rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  box-shadow: var(--n8-sunk);
+}
+
+.n8-view {
+  inline-size: 36px;
+  block-size: 32px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: none;
+  color: var(--n8-ink-faint);
+  cursor: pointer;
+  transition: background 200ms var(--n8-ease), color 200ms var(--n8-ease), transform 200ms var(--n8-spring);
+}
+
+.n8-view:hover { color: var(--n8-ink); }
+.n8-view:active { transform: scale(0.9); }
+
+.n8-view[aria-pressed='true'] {
+  background: var(--n8-surface);
+  color: var(--n8-ink);
+  box-shadow: var(--n8-lift);
+}
+
+/* --- Service bubbles -------------------------------------------------
+   No icon set covers four hundred services, and a wall of grey placeholder
+   squares would be worse than nothing. An initial on a coloured lump is
+   honest, reads at a glance, and is the right register for this page.
+   --------------------------------------------------------------------- */
+.n8-bubbles { display: flex; flex: none; }
+
+.n8-bubble {
+  inline-size: 34px;
+  block-size: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--n8-bubble, var(--n8-violet));
+  color: #fff;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 13px;
+  line-height: 1;
+  box-shadow:
+    0 4px 9px -3px rgba(20, 10, 45, 0.5),
+    inset 0 -4px 7px -4px rgba(0, 0, 0, 0.4),
+    inset 0 4px 6px -3px rgba(255, 255, 255, 0.6);
+  /* Overlap, each one cut out of the one before so the stack stays legible. */
+  margin-inline-start: -9px;
+  border: 2px solid var(--n8-surface);
+}
+
+.n8-bubble:first-child { margin-inline-start: 0; }
+.n8-bubble--more { background: var(--n8-surface-sunk); color: var(--n8-ink-soft); }
+
+/* --- Empty and loading ----------------------------------------------- */
+.n8-note {
+  display: grid;
+  gap: 0.6rem;
+  justify-items: center;
+  padding: 4rem 1.5rem;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  text-align: center;
+}
+
+.n8-note__title { font-size: 20px; }
+.n8-note p { color: var(--n8-ink-soft); max-inline-size: 44ch; }
+
+.n8-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  block-size: 236px;
+  padding: 1.25rem;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+}
+
+.n8-skeleton > * {
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  animation: n8-pulse 1.5s ease-in-out infinite;
+}
+
+.n8-skeleton:nth-child(even) > * { animation-delay: 0.18s; }
+.n8-skeleton:nth-child(3n) > * { animation-delay: 0.36s; }
+
+.n8-skeleton__bubble {
+  inline-size: 34px;
+  block-size: 34px;
+  border-radius: 50%;
+}
+
+.n8-skeleton__line { block-size: 12px; }
+.n8-skeleton__line--title { block-size: 18px; inline-size: 70%; }
+.n8-skeleton__line--short { inline-size: 45%; }
+
+@keyframes n8-pulse {
+  50% { opacity: 0.45; }
+}
+
+.n8-more {
+  display: grid;
+  place-items: center;
+  gap: 0.6rem;
+  margin-block-start: 1.5rem;
+}
+
+.n8-more__note {
+  font-size: 13px;
+  color: var(--n8-ink-faint);
+}
+
+.n8-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 48px;
+  padding-inline: 1.5rem;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  color: var(--n8-ink);
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 700;
+  font-size: 15px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: transform 260ms var(--n8-spring), box-shadow 260ms var(--n8-ease);
+}
+
+.n8-button:hover { transform: translateY(-2px); box-shadow: var(--n8-lift-high); }
+.n8-button:active { transform: scale(0.96); box-shadow: var(--n8-press); }
+
+.n8-button--primary {
+  background: linear-gradient(150deg, #ff7d9b, var(--n8-coral) 60%, var(--n8-coral-deep));
+  color: #fff;
+  box-shadow: var(--n8-cta);
+}
+
+.n8-button--primary:active { box-shadow: var(--n8-press); }
+.n8-button[disabled] { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+/* ============================================================
+   Detail dialog
+   ============================================================ */
+.n8-dialog {
+  inline-size: min(1180px, 100% - 1.5rem);
+  max-inline-size: none;
+  block-size: min(880px, 100dvh - 1.5rem);
+  max-block-size: none;
+  padding: 0;
+  border: none;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-bg);
+  color: var(--n8-ink);
+  box-shadow: var(--n8-dialog-shadow);
+  overflow: hidden;
+
+  opacity: 0;
+  transform: scale(0.94) translateY(12px);
+  transition:
+    opacity 260ms var(--n8-ease),
+    transform 320ms var(--n8-spring),
+    display 320ms allow-discrete,
+    overlay 320ms allow-discrete;
+}
+
+.n8-dialog[open] {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.94) translateY(12px);
+  }
+}
+
+.n8-dialog::backdrop {
+  background: rgba(38, 22, 72, 0);
+  backdrop-filter: blur(3px);
+  transition:
+    background 260ms var(--n8-ease),
+    display 260ms allow-discrete,
+    overlay 260ms allow-discrete;
+}
+
+.n8-dialog[open]::backdrop {
+  background: rgba(38, 22, 72, 0.42);
+
+  @starting-style {
+    background: rgba(38, 22, 72, 0);
+  }
+}
+
+html[data-n8-theme='dark'] .n8-dialog[open]::backdrop { background: rgba(6, 4, 14, 0.62); }
+
+.n8-detail {
+  position: relative;
+  block-size: 100%;
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.n8-toast {
+  position: absolute;
+  /* Clear of the diagram's zoom controls, which live in the same corner. */
+  inset-block-end: 4.75rem;
+  inset-inline: 1.5rem;
+  z-index: 2;
+  inline-size: fit-content;
+  max-inline-size: calc(100% - 3rem);
+  margin-inline: auto;
+  padding: 0.7rem 1.2rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-ink);
+  color: var(--n8-bg);
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  box-shadow: 0 16px 34px -14px rgba(10, 5, 25, 0.75);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px) scale(0.96);
+  transition:
+    opacity 220ms var(--n8-ease),
+    transform 320ms var(--n8-spring);
+}
+
+.n8-toast[data-visible='true'] {
+  opacity: 1;
+  transform: none;
+}
+
+.n8-detail__head {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1.35rem 1.35rem 0;
+}
+
+@media (min-width: 768px) {
+  .n8-detail__head { padding: 1.75rem 1.75rem 0; }
+}
+
+.n8-detail__titles {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.n8-detail__title { font-size: clamp(21px, 3vw, 29px); }
+
+.n8-detail__summary {
+  font-size: 15px;
+  color: var(--n8-ink-soft);
+  max-inline-size: 78ch;
+}
+
+.n8-detail__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.n8-detail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 1rem 1.35rem;
+}
+
+.n8-detail__take {
+  display: flex;
+  gap: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .n8-detail__actions { padding: 1.1rem 1.75rem; }
+}
+
+.n8-detail__panel {
+  min-block-size: 0;
+  margin: 0 0.75rem 0.75rem;
+  border-radius: var(--n8-r-lg);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-sunk);
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .n8-detail__panel { margin: 0 1.25rem 1.25rem; }
+}
+
+.n8-close {
+  flex: none;
+  inline-size: 44px;
+  block-size: 44px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  color: var(--n8-ink-soft);
+  cursor: pointer;
+  transition: transform 240ms var(--n8-spring), color 200ms var(--n8-ease);
+}
+
+.n8-close:hover { transform: rotate(90deg); color: var(--n8-coral-deep); }
+.n8-close:active { transform: scale(0.9) rotate(90deg); box-shadow: var(--n8-press); }
+
+/* --- Tabs ------------------------------------------------------------ */
+.n8-tabs {
+  display: inline-flex;
+  gap: 0.25rem;
+  padding: 0.3rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface-sunk);
+  box-shadow: var(--n8-sunk);
+}
+
+.n8-tab {
+  min-block-size: 38px;
+  padding-inline: 1rem;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: none;
+  color: var(--n8-ink-soft);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 200ms var(--n8-ease), color 200ms var(--n8-ease), transform 200ms var(--n8-spring);
+}
+
+.n8-tab:hover { color: var(--n8-ink); }
+.n8-tab:active { transform: scale(0.95); }
+
+.n8-tab[aria-selected='true'] {
+  background: var(--n8-surface);
+  color: var(--n8-ink);
+  font-weight: 700;
+  box-shadow: var(--n8-lift);
+}
+
+/* ============================================================
+   Diagram
+   ============================================================ */
+.n8-stage {
+  position: relative;
+  block-size: 100%;
+  background:
+    radial-gradient(circle at 1px 1px, var(--n8-grid-dot) 1px, transparent 0) 0 0 / 22px 22px,
+    var(--n8-surface);
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+}
+
+.n8-stage:active { cursor: grabbing; }
+.n8-stage svg { display: block; inline-size: 100%; block-size: 100%; }
+
+.n8-stage__controls {
+  position: absolute;
+  inset-block-end: 0.85rem;
+  inset-inline-end: 0.85rem;
+  display: flex;
+  gap: 0.35rem;
+  padding: 0.3rem;
+  border-radius: var(--n8-r-pill);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+}
+
+.n8-stage__button {
+  inline-size: 38px;
+  block-size: 38px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: var(--n8-r-pill);
+  background: none;
+  color: var(--n8-ink-soft);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 180ms var(--n8-ease), transform 200ms var(--n8-spring);
+}
+
+.n8-stage__button:hover { background: var(--n8-surface-sunk); color: var(--n8-ink); }
+.n8-stage__button:active { transform: scale(0.9); }
+.n8-stage__button--wide { inline-size: auto; padding-inline: 0.8rem; font-size: 13px; }
+
+.n8-stage__legend {
+  position: absolute;
+  inset-block-end: 0.85rem;
+  inset-inline-start: 0.85rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.7rem;
+  max-inline-size: calc(100% - 12rem);
+  padding: 0.5rem 0.8rem;
+  border-radius: var(--n8-r-md);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--n8-ink-soft);
+}
+
+.n8-legend__dot {
+  display: inline-block;
+  inline-size: 9px;
+  block-size: 9px;
+  margin-inline-end: 0.3rem;
+  border-radius: 50%;
+  background: var(--n8-dot);
+  vertical-align: baseline;
+}
+
+/* --- Node blocks, drawn in SVG --------------------------------------- */
+.n8-node__block {
+  fill: var(--n8-node);
+  stroke: var(--n8-node-rim);
+  stroke-width: 2;
+  filter: url(#n8-node-shadow);
+}
+
+.n8-node--disabled { opacity: 0.42; }
+
+.n8-node__glyph { fill: #fff; }
+
+/*
+ * Node captions.
+ *
+ * A caption is wider than the block it names, and n8n's canvas lets authors
+ * park nodes closer together than that - so on a dense workflow two captions
+ * will overlap however aggressively they are truncated. The halo is what
+ * makes that survivable: `paint-order: stroke` draws a fat stroke in the
+ * stage colour *under* the glyphs, so the caption in front stays readable
+ * instead of the two turning into mush.
+ */
+.n8-node__label,
+.n8-node__sub {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: var(--n8-surface);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+}
+
+.n8-node__label {
+  font-size: 15px;
+  font-weight: 600;
+  fill: var(--n8-caption);
+}
+
+.n8-node__sub {
+  font-size: 12.5px;
+  fill: var(--n8-caption-soft);
+}
+
+.n8-edge {
+  fill: none;
+  stroke: var(--n8-edge);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+}
+
+.n8-edge--ai {
+  stroke: var(--n8-edge-ai);
+  stroke-dasharray: 7 7;
+}
+
+.n8-notesheet {
+  fill: var(--n8-note-canvas);
+  stroke: var(--n8-note-edge);
+  stroke-width: 2;
+}
+
+.n8-notesheet__text {
+  font-family: 'DM Sans', system-ui, sans-serif;
+  font-size: 13px;
+  fill: var(--n8-note-ink-soft);
+}
+
+/* ============================================================
+   Notes and JSON panels
+   ============================================================ */
+.n8-scroll {
+  block-size: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 1.35rem;
+}
+
+.n8-notes {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr));
+  align-items: start;
+}
+
+.n8-sticky {
+  padding: 1.1rem 1.25rem;
+  border-radius: var(--n8-r-md);
+  background: var(--n8-note);
+  box-shadow: var(--n8-note-shadow);
+  color: var(--n8-note-ink);
+  font-size: 14px;
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.n8-sticky :is(h1, h2, h3, h4, h5, h6) {
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-weight: 800;
+  font-size: 15px;
+  line-height: 1.3;
+  margin-block: 0.35rem 0.5rem;
+  color: var(--n8-note-ink-strong);
+}
+
+.n8-sticky :first-child { margin-block-start: 0; }
+.n8-sticky p { margin-block: 0 0.7rem; }
+.n8-sticky :last-child { margin-block-end: 0; }
+
+/*
+ * Tailwind's preflight sets `list-style: none` on every list, which is right
+ * for a UI and wrong for prose - a note's bullets came out as unexplained
+ * indentation. Only the note bodies get their markers back.
+ */
+.n8-sticky ul,
+.n8-sticky ol {
+  margin: 0 0 0.7rem;
+  padding-inline-start: 1.3rem;
+}
+
+.n8-sticky ul { list-style: disc; }
+.n8-sticky ol { list-style: decimal; }
+.n8-sticky li { margin-block-end: 0.2rem; }
+.n8-sticky li::marker { color: var(--n8-note-ink-soft); }
+.n8-sticky strong { font-weight: 700; color: var(--n8-note-ink-strong); }
+
+.n8-sticky code {
+  padding: 0.1em 0.35em;
+  border-radius: 5px;
+  background: var(--n8-note-code);
+  font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, monospace;
+  font-size: 0.9em;
+}
+
+.n8-sticky pre {
+  margin: 0 0 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: var(--n8-r-sm);
+  background: var(--n8-note-code);
+  overflow-x: auto;
+}
+
+.n8-sticky pre code { padding: 0; background: none; }
+.n8-sticky a { color: var(--n8-note-link); text-decoration: underline; text-underline-offset: 2px; }
+.n8-sticky hr { border: none; border-top: 1px solid var(--n8-note-rule); margin-block: 0.7rem; }
+
+.n8-code {
+  margin: 0;
+  font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--n8-ink-soft);
+  white-space: pre;
+  tab-size: 2;
+}
+
+.n8-nodelist {
+  display: grid;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.n8-nodelist__item {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.85rem;
+  border-radius: var(--n8-r-md);
+  background: var(--n8-surface-sunk);
+  font-size: 14px;
+}
+
+.n8-nodelist__swatch {
+  inline-size: 12px;
+  block-size: 12px;
+  flex: none;
+  border-radius: 4px;
+  background: var(--n8-node);
+}
+
+.n8-nodelist__type {
+  margin-inline-start: auto;
+  font-size: 12px;
+  color: var(--n8-ink-faint);
+  font-family: ui-monospace, 'SFMono-Regular', 'Cascadia Mono', Menlo, monospace;
+}
+
+/* ============================================================
+   Footer
+   ============================================================ */
+.n8-colophon {
+  margin-block-start: 3rem;
+  padding: 1.5rem;
+  border-radius: var(--n8-r-xl);
+  background: var(--n8-surface);
+  box-shadow: var(--n8-lift);
+  font-size: 14px;
+  color: var(--n8-ink-soft);
+}
+
+/* ============================================================
+   Focus, everywhere
+   ============================================================ */
+.n8-app :is(a, button, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--n8-coral);
+  outline-offset: 3px;
+  border-radius: var(--n8-r-sm);
+}
+
+.n8-search:focus-within .n8-search__input:focus-visible { outline: none; }
+
+/* ============================================================
+   Reduced motion
+
+   The springs become plain fades, and the press states keep their shadow
+   change - a control still has to say it was pressed, it just does not
+   bounce about it.
+   ============================================================ */
+@media (prefers-reduced-motion: reduce) {
+  .n8-app *,
+  .n8-dialog,
+  .n8-dialog::backdrop {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 120ms !important;
+  }
+
+  .n8-card:hover,
+  .n8-chip:hover,
+  .n8-button:hover,
+  .n8-theme:hover,
+  .n8-search:focus-within { transform: none; }
+  .n8-close:hover { transform: none; }
+  .n8-dialog,
+  .n8-dialog[open] { transform: none; }
+}

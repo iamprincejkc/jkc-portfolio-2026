@@ -5,7 +5,27 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxt/image'],
 
-  css: ['~/assets/css/main.css', '~/assets/css/qr.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/qr.css', '~/assets/css/n8n.css'],
+
+  /*
+   * Resize images at Netlify's edge rather than inside the server function.
+   *
+   * The default provider is `ipx`, which pulls in `sharp` and, through it,
+   * native libvips and libheif. Those carry five open CVEs that cannot be
+   * cleared without `@nuxt/image@2` - which was tried and breaks the build,
+   * stopping during prerender and never emitting the client assets.
+   *
+   * Netlify's Image CDN does the same job outside the function, so the native
+   * decoder stops being deployed at all and the `/_ipx/` endpoint stops
+   * existing. It also means no cold start pays for image processing.
+   *
+   * `ipx` is kept for local development, where `/.netlify/images` does not
+   * exist. `NETLIFY` is set by Netlify during the build, and the provider is
+   * baked in at build time, so this is decided once and never at runtime.
+   */
+  image: {
+    provider: process.env.NETLIFY ? 'netlifyImageCdn' : 'ipx',
+  },
 
   app: {
     head: {
@@ -78,13 +98,26 @@ export default defineNuxtConfig({
       /*
        * Absolute origin for canonical, Open Graph and sitemap URLs.
        *
-       * Hardcoded to the custom domain rather than Netlify's $URL: on deploy
-       * previews and branch builds that variable points at a *.netlify.app
-       * host, and a canonical tag advertising the wrong origin actively splits
-       * ranking signals. NUXT_PUBLIC_SITE_URL still overrides it if the domain
-       * ever changes.
+       * Every one of those is an absolute URL, so this value decides which
+       * origin search engines are told is the real one. Point it at a domain
+       * that is not serving the site and the live site stops being indexed -
+       * which is exactly what happened while `iamjkc.space` was parked: the
+       * Netlify deploy was up and healthy and every page on it still carried
+       * `<link rel="canonical" href="https://iamjkc.space/">`.
+       *
+       * So the default is the origin that is actually serving, and a custom
+       * domain arrives by setting NUXT_PUBLIC_SITE_URL - not by editing this
+       * line and hoping the next person remembers.
+       *
+       * Deliberately not Netlify's own $URL: on deploy previews and branch
+       * builds that points at a per-deploy *.netlify.app host, and a canonical
+       * advertising a preview origin splits ranking signals.
+       *
+       * It is read at build time as well as runtime, because the prerendered
+       * pages bake their canonical in - changing the variable needs a
+       * redeploy, not just a restart.
        */
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://iamjkc.space',
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://iamprincejkc.netlify.app',
     },
   },
 
@@ -103,6 +136,24 @@ export default defineNuxtConfig({
      * page reads on the client.
      */
     '/qr-generator': { prerender: true },
+
+    /*
+     * The n8n library is a static shell over static data. The catalog and each
+     * workflow are files under `public/n8n/`, fetched by the browser after
+     * mount rather than during setup - baking 700 kB of catalog into the
+     * prerendered HTML would slow first paint down for no benefit, and would
+     * go stale the next time the catalog is regenerated.
+     *
+     * The two are cached differently on purpose. A workflow file is a leaf:
+     * serving yesterday's copy shows a workflow that is still perfectly valid.
+     * The catalog is the index of which ids exist, so a stale one hands the
+     * page ids whose files have been removed - every card a dead end. It
+     * revalidates on every visit instead, which is one conditional request
+     * answered with a 304 and a few hundred bytes.
+     */
+    '/n8n': { prerender: true },
+    '/n8n/catalog.json': { headers: { 'cache-control': 'public, max-age=0, must-revalidate' } },
+    '/n8n/workflows/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },
 
     /*
      * The gallery is per-request by definition: it reads the session cookie.
@@ -128,6 +179,6 @@ export default defineNuxtConfig({
     // `npm run build` honest when run anywhere else.
     // robots and the sitemap never change per request, so they are baked at
     // build time and served straight from the CDN.
-    prerender: { crawlLinks: false, routes: ['/', '/qr-generator', '/robots.txt', '/sitemap.xml'] },
+    prerender: { crawlLinks: false, routes: ['/', '/qr-generator', '/n8n', '/robots.txt', '/sitemap.xml'] },
   },
 })

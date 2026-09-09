@@ -261,12 +261,17 @@ onBeforeUnmount(() => {
             class="block group"
           >
             <div class="overflow-hidden rounded-xs mb-4">
+              <!--
+                Every value in `sizes` needs its breakpoint. An unprefixed
+                `100vw` made @nuxt/image emit `1w` and `2w` candidates - one-
+                and two-pixel images - in every srcset it wrote.
+              -->
               <NuxtImg
                 :src="p.image"
                 :alt="p.name"
                 class="w-full h-auto group-hover:scale-[1.02] transition-transform duration-slow"
                 loading="lazy"
-                sizes="100vw sm:640px"
+                sizes="xs:100vw sm:640px"
               />
             </div>
             <div class="flex items-end justify-between gap-4">

@@ -20,6 +20,13 @@ export default defineEventHandler((event) => {
     'Disallow: /gallery',
     'Disallow: /evently',
     '',
+    '# The workflow library is one page backed by ~2,000 JSON files. The page',
+    '# is worth indexing; the data behind it is not - it has no title, nothing',
+    '# to rank on, and crawling all of it would spend this site\'s entire crawl',
+    '# budget on machine-readable files nobody searches for.',
+    'Disallow: /n8n/workflows/',
+    'Disallow: /n8n/catalog.json',
+    '',
     `Sitemap: ${siteUrl}/sitemap.xml`,
     '',
   ].join('\n')

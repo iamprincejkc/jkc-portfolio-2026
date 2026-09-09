@@ -78,7 +78,26 @@ export function subjectSnippet(message: string, limit = 68): string {
   return flat.length <= limit ? flat : `${flat.slice(0, limit - 1)}…`
 }
 
-function shell(preheader: string, inner: string): string {
+/**
+ * The bare host, for the places the email shows the site by name rather than
+ * links to it: `iamjkc.space` from `https://iamjkc.space/`.
+ *
+ * Derived from the configured site URL rather than written into the template,
+ * so moving to a new domain stays what it should be - one environment
+ * variable - instead of a hunt through an email template for six string
+ * literals that still name the old one.
+ */
+export function siteHost(siteUrl: string): string {
+  try {
+    return new URL(siteUrl).host
+  } catch {
+    // A misconfigured NUXT_PUBLIC_SITE_URL must not take the contact form
+    // down; an email with no wordmark still delivers the message.
+    return siteUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+  }
+}
+
+function shell(host: string, preheader: string, inner: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -86,7 +105,7 @@ function shell(preheader: string, inner: string): string {
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <meta name="color-scheme" content="dark light" />
 <meta name="supported-color-schemes" content="dark light" />
-<title>iamjkc.space</title>
+<title>${escapeHtml(host)}</title>
 </head>
 <body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
   <!-- Inbox preview line. Hidden in the body itself. -->
@@ -106,12 +125,12 @@ function shell(preheader: string, inner: string): string {
 </html>`
 }
 
-function wordmark(): string {
+function wordmark(host: string): string {
   return `
   <tr>
     <td style="padding:0 4px 22px;">
       <span style="font:600 13px/1 ${SANS};letter-spacing:0.02em;color:${INK};">JKC</span>
-      <span style="font:400 13px/1 ${SANS};color:${FAINT};">&nbsp;&nbsp;iamjkc.space</span>
+      <span style="font:400 13px/1 ${SANS};color:${FAINT};">&nbsp;&nbsp;${escapeHtml(host)}</span>
     </td>
   </tr>`
 }
@@ -132,10 +151,11 @@ function field(label: string, value: string): string {
 
 /** The notification that goes to JKC. */
 export function renderContactEmail(msg: ContactMessage): string {
-  const mailto = `mailto:${encodeURI(msg.email)}?subject=${encodeURIComponent('Re: your message via iamjkc.space')}`
+  const host = siteHost(msg.siteUrl)
+  const mailto = `mailto:${encodeURI(msg.email)}?subject=${encodeURIComponent(`Re: your message via ${host}`)}`
 
   const inner = `
-  ${wordmark()}
+  ${wordmark(host)}
   <tr>
     <td style="background:${SURFACE};border:1px solid ${LINE};border-radius:4px;padding:36px 34px;">
 
@@ -193,12 +213,12 @@ export function renderContactEmail(msg: ContactMessage): string {
     </td>
   </tr>`
 
-  return shell(`${msg.name}: ${subjectSnippet(msg.message, 90)}`, inner)
+  return shell(host, `${msg.name}: ${subjectSnippet(msg.message, 90)}`, inner)
 }
 
 export function renderContactText(msg: ContactMessage): string {
   return [
-    'NEW ENQUIRY — iamjkc.space',
+    `NEW ENQUIRY — ${siteHost(msg.siteUrl)}`,
     '',
     `From:    ${msg.name}`,
     `Email:   ${msg.email}`,
@@ -219,8 +239,9 @@ export function renderContactText(msg: ContactMessage): string {
  * its own rather than being a bare "thanks".
  */
 export function renderAutoReply(msg: ContactMessage): string {
+  const host = siteHost(msg.siteUrl)
   const inner = `
-  ${wordmark()}
+  ${wordmark(host)}
   <tr>
     <td style="background:${SURFACE};border:1px solid ${LINE};border-radius:4px;padding:36px 34px;">
 
@@ -261,7 +282,7 @@ export function renderAutoReply(msg: ContactMessage): string {
               Software Engineer &middot; Cebu City
             </div>
             <div style="padding-top:12px;font:400 13px/1.5 ${SANS};">
-              <a href="${msg.siteUrl}" style="color:${ACCENT};text-decoration:none;">iamjkc.space</a>
+              <a href="${msg.siteUrl}" style="color:${ACCENT};text-decoration:none;">${escapeHtml(siteHost(msg.siteUrl))}</a>
             </div>
           </td>
         </tr>
@@ -275,10 +296,7 @@ export function renderAutoReply(msg: ContactMessage): string {
     </td>
   </tr>`
 
-  return shell(
-    `Thanks for getting in touch — I'll reply personally.`,
-    inner,
-  )
+  return shell(host, `Thanks for getting in touch — I'll reply personally.`, inner)
 }
 
 export function renderAutoReplyText(msg: ContactMessage): string {
