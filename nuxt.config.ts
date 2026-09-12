@@ -130,6 +130,12 @@ export default defineNuxtConfig({
     '/': { prerender: true },
 
     /*
+     * The about page is static prose plus the family photos - no per-request
+     * state at all - so it is baked at build time alongside the home page.
+     */
+    '/about': { prerender: true },
+
+    /*
      * The QR generator does all of its work in the browser - there is no API
      * behind it - so the page itself is static and prerendered alongside the
      * homepage. Shared links carry their state in the query string, which the
@@ -201,7 +207,7 @@ export default defineNuxtConfig({
     // build time and served straight from the CDN.
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/qr-generator', '/n8n', '/public-api', '/robots.txt', '/sitemap.xml'],
+      routes: ['/', '/about', '/qr-generator', '/n8n', '/public-api', '/robots.txt', '/sitemap.xml'],
     },
   },
 })

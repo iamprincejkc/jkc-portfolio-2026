@@ -9,32 +9,87 @@ const COLS = 12
 const ROWS = 16
 const tiles = Array.from({ length: COLS * ROWS }, (_, i) => i)
 
-const offsets: { x: number; y: number; r: number }[] = tiles.map(() => ({
-  x: (Math.random() - 0.5) * 80,
-  y: (Math.random() - 0.5) * 80,
-  r: (Math.random() - 0.5) * 45,
-}))
+/**
+ * Where each tile goes when the portrait comes apart.
+ *
+ * The old version gave every tile the same uniform random nudge, which is why
+ * it read as static rather than as something breaking: noise in all directions
+ * at one amplitude has no centre, so the eye never finds the face inside it.
+ *
+ * Each tile now flies *outward from the middle*, and how far it travels grows
+ * with the square of its distance from the centre. That is the whole trick -
+ * the middle of the face barely moves while the edges scatter, so the portrait
+ * blooms open and stays recognisable the whole way. Angle carries a little
+ * jitter so it is a bloom and not a perfect starburst, and rotation and scale
+ * both scale with distance so the outer tiles tumble and recede while the
+ * inner ones stay flat and near.
+ *
+ * Deliberately 2D. `scale` reads as depth here just as well as a real `z`
+ * would, and using it avoids putting a `perspective`/`preserve-3d` subtree
+ * inside `.hero__portrait`'s radial mask - a masked element wrapping a 3D
+ * scene is exactly the kind of compositing arrangement that bites.
+ */
+const CX = (COLS - 1) / 2
+const CY = (ROWS - 1) / 2
+const MAX_DIST = Math.hypot(CX, CY)
 
-const isAssembled = ref(false)
+interface TileOffset {
+  x: number
+  y: number
+  rotation: number
+  scale: number
+  opacity: number
+}
 
+const offsets: TileOffset[] = tiles.map((i) => {
+  const col = i % COLS
+  const row = Math.floor(i / COLS)
+  const dx = col - CX
+  const dy = row - CY
+  /** 0 at the centre of the face, 1 at the corners. */
+  const dist = Math.hypot(dx, dy) / MAX_DIST
+  const angle = Math.atan2(dy, dx) + (Math.random() - 0.5) * 0.7
+  const travel = 26 + dist * dist * 200
+
+  return {
+    x: Math.cos(angle) * travel,
+    y: Math.sin(angle) * travel,
+    rotation: (Math.random() - 0.5) * 80 * (0.3 + dist),
+    scale: 1 - dist * 0.5 + (Math.random() - 0.5) * 0.12,
+    opacity: Math.max(0, 0.92 - dist * 0.8),
+  }
+})
+
+let shatterTrigger: { kill: (revert?: boolean) => void } | null = null
 
 onMounted(() => {
-  const { $gsap } = useNuxtApp() as any
+  const { $gsap, $ScrollTrigger } = useNuxtApp() as any
   if (!$gsap || !heroRef.value || !tilesRef.value) return
 
-  // Set tiles to their shattered resting state immediately on mount.
   const tileEls = tilesRef.value.querySelectorAll<HTMLElement>('.tile')
-  tileEls.forEach((el, i) => {
-    const o = offsets[i]
-    $gsap.set(el, {
-      x: o.x,
-      y: o.y,
-      rotation: o.r,
-      opacity: 0.6 + ((i * 37) % 40) / 100,
-    })
-  })
 
-  // Then run the page-load entrance animation
+  /*
+   * The portrait now rests *assembled*.
+   *
+   * It used to rest shattered and reassemble on hover, which meant the first
+   * thing anyone saw on a page about a person was an unrecognisable scatter -
+   * and on a phone, where there is no hover and nothing said the image could
+   * be touched, that was the only thing they ever saw. Resting assembled puts
+   * the face on screen for everyone and keeps the effect for the scroll.
+   */
+  /*
+   * Rest scale is 1.02, not 1.
+   *
+   * The grid is 12 x 16 over a width set by `clamp()`, so a tile is almost
+   * never a whole number of pixels. The CSS already bleeds each one by half a
+   * pixel, but at the widths where the rounding lands badly a hairline of
+   * background still shows through a row or a column - which never mattered
+   * while the portrait rested shattered and matters now that it rests whole.
+   * Two percent is under a pixel of growth on a 40px tile: invisible as
+   * scaling, enough to close the seam.
+   */
+  $gsap.set(tileEls, { x: 0, y: 0, rotation: 0, scale: 1.02, opacity: 1 })
+
   const els = heroRef.value.querySelectorAll('[data-hero-reveal]')
   $gsap.from(els, {
     y: 40,
@@ -44,50 +99,62 @@ onMounted(() => {
     stagger: 0.08,
     delay: 0.15,
   })
+
+  /*
+   * Coming apart is tied to scroll rather than to the pointer, so it happens
+   * once, in view, for everybody - mouse, touch and keyboard alike.
+   *
+   * `prefers-reduced-motion` skips it outright: the portrait simply stays
+   * whole, which is the better still image anyway.
+   */
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (!$ScrollTrigger) return
+
+  const timeline = $gsap.timeline({
+    scrollTrigger: {
+      trigger: heroRef.value,
+      start: 'top top',
+      /*
+       * Fully apart about two-thirds of a screen down, not when the hero
+       * finally leaves. Running the break over the hero's whole height would
+       * spend most of the animation below the fold, where nobody is looking.
+       */
+      end: '+=70%',
+      scrub: 0.8,
+      invalidateOnRefresh: true,
+    },
+  })
+
+  timeline.to(tileEls, {
+    x: (i: number) => offsets[i].x,
+    y: (i: number) => offsets[i].y,
+    rotation: (i: number) => offsets[i].rotation,
+    scale: (i: number) => offsets[i].scale,
+    opacity: (i: number) => offsets[i].opacity,
+    ease: 'power2.in',
+    duration: 1,
+    /*
+     * Edges first, so the face is the last thing to go.
+     *
+     * `from: 'center'` does the opposite - it releases the middle first and
+     * dissolves the features while the border is still intact, which looks
+     * like the image failing rather than coming apart.
+     *
+     * `amount` rather than `each`: `each: 0.006` across 192 tiles spreads the
+     * stagger over 1.15s against a 0.5s tween, so barely a dozen tiles are
+     * ever in motion together and it reads as a wipe. Holding the whole
+     * spread to roughly half the tween duration keeps most of the grid moving
+     * at once, which is what makes it a bloom.
+     */
+    stagger: { amount: 0.55, from: 'edges', grid: [ROWS, COLS] },
+  })
+
+  shatterTrigger = timeline.scrollTrigger
 })
 
-// Hover IN → assemble the image
-function assemble() {
-  if (!tilesRef.value) return
-  const { $gsap } = useNuxtApp() as any
-  if (!$gsap) return
-  const tileEls = tilesRef.value.querySelectorAll<HTMLElement>('.tile')
-  $gsap.killTweensOf(tileEls)
-  isAssembled.value = true
-  $gsap.to(tileEls, {
-    x: 0,
-    y: 0,
-    rotation: 0,
-    opacity: 1,
-    duration: 0.55,
-    ease: 'power3.out',
-    overwrite: 'auto',
-  })
-}
-
-// Hover OUT → break apart again
-function shatter() {
-  if (!tilesRef.value) return
-  const { $gsap } = useNuxtApp() as any
-  if (!$gsap) return
-  const tileEls = tilesRef.value.querySelectorAll<HTMLElement>('.tile')
-  $gsap.killTweensOf(tileEls)
-  isAssembled.value = false
-  tileEls.forEach((el, i) => {
-    const o = offsets[i]
-    $gsap.to(el, {
-      x: o.x,
-      y: o.y,
-      rotation: o.r,
-      opacity: 0.6 + ((i * 37) % 40) / 100,
-      duration: 0.6,
-      ease: 'expo.inOut',
-      overwrite: 'auto',
-    })
-  })
-}
-
-onBeforeUnmount(() => {})
+onBeforeUnmount(() => {
+  shatterTrigger?.kill()
+})
 </script>
 <template>
   <section
@@ -128,15 +195,18 @@ onBeforeUnmount(() => {})
         <span class="block italic text-accent">Cadampog</span>
       </h1>
 
-      <!-- Tile-grid portrait. The hidden <img class="sizer"> gives the box
-           its natural aspect ratio so the photo never stretches. -->
-        <div
-          class="hero__portrait"
-          data-hero-reveal
-          @mouseenter="assemble"
-          @mouseleave="shatter"
-          @click="isAssembled ? shatter() : assemble()"
-        >
+      <!--
+        Tile-grid portrait. The hidden <img class="sizer"> gives the box its
+        natural aspect ratio so the photo never stretches.
+
+        `role="img"` with a name, because the picture is built out of 192
+        empty divs painting slices of a background image - there is nothing
+        here a screen reader could otherwise announce, on the one page where
+        the portrait is the subject. It carries no handlers: scroll drives the
+        effect now, so this is a picture rather than a control, and it should
+        not advertise itself as something to click.
+      -->
+      <div class="hero__portrait" role="img" aria-label="Jan Kevin Cadampog" data-hero-reveal>
         <img src="/images/main.webp" alt="" class="sizer" aria-hidden="true" />
         <div ref="tilesRef" class="tile-grid">
           <div
@@ -227,7 +297,7 @@ onBeforeUnmount(() => {})
   position: relative;
   z-index: 2;
   width: clamp(280px, 32vw, 480px);
-  cursor: pointer;
+  /* No `cursor: pointer` - scroll drives the effect, so this is not a control. */
   -webkit-mask-image: radial-gradient(
     ellipse 78% 82% at 50% 45%,
     black 58%,
@@ -289,26 +359,61 @@ onBeforeUnmount(() => {})
  * straight over the meta column.
  */
 @media (max-width: 1023px) {
+  /*
+   * Name first, details after.
+   *
+   * The desktop layout puts the meta block in the top-right corner, where it
+   * sits *beside* the name. Stacked for a phone in source order it landed
+   * *above* it, so the first screen of a page about a person was "Located in
+   * / Cebu City / Currently / Software Engineer" at full size, and the name
+   * itself did not appear until you scrolled. Measured: the first project was
+   * 2.7 screens down.
+   *
+   * Ordering the flex children fixes it without touching the markup or the
+   * desktop layout: you get the name and face, then what he is, then the
+   * where and the what-he-is-listening-to.
+   */
   .hero {
+    display: flex;
+    flex-direction: column;
     padding-top: 5rem;
     padding-bottom: 2rem;
     min-height: auto;
   }
 
+  .hero__corner--tl { order: 1; }
+  .hero__stage { order: 2; }
+  .hero__corner--bl { order: 3; }
+  .hero__corner--tr { order: 4; }
+  .hero__marquee { order: 5; }
+
   /* All corners become normal-flow blocks, stacked top to bottom */
   .hero__corner {
     position: static;
     padding: 0 1.5rem;
-    margin-bottom: 2rem;
+    margin-bottom: 1.5rem;
     text-align: left;
   }
   .hero__corner--tr {
     text-align: left;
   }
 
+  /*
+   * Demoted to supporting text. At `text-lg` this block competed with the
+   * name for the eye on a 375px screen, which is the wrong way round.
+   */
+  .hero__corner--tr p {
+    font-size: 0.9375rem;
+    line-height: 1.45;
+  }
+  .hero__corner--tr .mt-6 {
+    margin-top: 1rem;
+  }
+
   /* Shrink the Spotify card so it doesn't dominate the screen */
   .hero__corner--tr .mt-8 {
     max-width: 220px;
+    margin-top: 1.25rem;
     align-items: flex-start;
     text-align: left;
   }

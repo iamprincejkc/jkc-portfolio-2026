@@ -35,13 +35,25 @@ onMounted(() => {
   $gsap.set(revealRef.value, { opacity: 0, scale: 0.35, transformOrigin: 'center' })
   $gsap.set(text2Ref.value, { opacity: 0 })
 
-  // ---- Master timeline ---------------------------------------------------
-  // 4× viewport of scroll length for the full pinned story.
+  /* ---- Master timeline ----------------------------------------------------
+   *
+   * 1.6× viewport of scroll, down from 4×.
+   *
+   * At 400% this one section was five screens - 35% of the entire home page -
+   * to deliver two lines of text, and it was measurably the largest single
+   * thing between a visitor and the contact form. All four scenes are still
+   * here and still in the same order; each simply gets a shorter run, which
+   * also makes the whole thing read faster rather than feeling like a section
+   * that will not end.
+   *
+   * If it ever needs to breathe again, raise this number - do not add scenes.
+   * -------------------------------------------------------------------------
+   */
   const tl = $gsap.timeline({
     scrollTrigger: {
       trigger: sectionRef.value,
       start: 'top top',
-      end: '+=400%',
+      end: '+=160%',
       pin: pinRef.value,
       scrub: 1,
       anticipatePin: 1,
