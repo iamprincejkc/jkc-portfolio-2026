@@ -37,7 +37,8 @@ jkc-portfolio/
 ├── pages/
 │   ├── index.vue              ← composes all sections
 │   ├── qr-generator.vue       ← ★ the QR tool (see below)
-│   └── n8n.vue                ← ★ the workflow library (see below)
+│   ├── n8n.vue                ← ★ the workflow library (see below)
+│   └── public-api.vue         ← ★ the public API directory (see below)
 ├── components/
 │   ├── SiteHeader.vue         ← sticky header with hide-on-scroll
 │   ├── SiteFooter.vue
@@ -74,11 +75,16 @@ jkc-portfolio/
 │   ├── graph.ts               ← nodes + connections → an SVG scene
 │   ├── markdown.ts            ← sticky notes → HTML, escape-first
 │   └── palette.ts             ← node-kind colours and service bubbles
+├── utils/public-api/          ← the API directory's engine, also unit-tested
+│   ├── parse.ts               ← the upstream README → catalog rows
+│   └── search.ts              ← client-side search, filters and facet counts
 ├── assets/css/main.css        ← base styles, marquee/rotator/header CSS
 ├── assets/css/qr.css          ← the QR tool's liquid-glass system
 ├── assets/css/n8n.css         ← the workflow library's clay system
+├── assets/css/public-api.css  ← the API directory's paper system
 ├── public/images/             ← your real project + skill assets
-└── public/n8n/                ← GENERATED: the catalog and 2,045 workflows
+├── public/n8n/                ← GENERATED: the catalog and 2,045 workflows
+└── public/public-api/         ← GENERATED: the API catalog
 ```
 
 ## How the key effects work
@@ -221,6 +227,73 @@ Two performance rules the page learned the hard way, both worth keeping:
   one flick to the bottom and left 120 cards and 1,800 nodes mounted. A button
   keeps the page the size the reader chose: 24 cards, ~540 nodes, however far
   they scroll.
+
+Run its tests with `npm test`.
+
+## The public API directory (`/public-api`)
+
+A searchable index of the community-curated
+[public-apis](https://github.com/public-apis/public-apis) list: 1,773 free APIs
+across 51 categories, filterable by what each one wants from you before it
+answers.
+
+The question the page is built around is **"what can I call from a page right
+now"**, because that is the one the source list makes you answer by hand.
+An entry is *browser-ready* when it needs no credentials, is served over HTTPS,
+and has CORS confirmed — all three, which is true of 347 of the 1,773. That is
+a switch in the rail, the default ranking signal, and the blue edge on a card.
+
+Everything is served from this site. `public/public-api/catalog.json` is the
+whole thing — 456 kB, ~78 kB brotli — fetched once after mount, so browsing
+never waits on a second request and nothing depends on GitHub at run time.
+
+Regenerate it with:
+
+```bash
+node scripts/build-public-api-catalog.mjs
+```
+
+Upstream has no data file: **the README is the database**, 250 kB of markdown
+holding one table per category. So that script is a parser, and it is pinned to
+a commit SHA rather than to `master` — the list is edited several times a week,
+and without a pin a rebuild is not reproducible and a regression is not
+diffable. It refuses to write a catalog that has lost a tenth of the entries or
+a fifth of the categories, because a README reformatted upstream parses to a
+plausible-looking fraction of itself rather than to an error.
+
+Two things about the data shape the code:
+
+- **A category section is found structurally, never by name.** The file opens
+  with two sponsor tables shaped exactly like the real ones. What separates
+  them is the header row: only the directory tables declare `Auth`, `HTTPS` and
+  `CORS`. So a section arms on that row and closes at the next heading, and a
+  category added upstream is picked up without touching `parse.ts`.
+- **CORS is three-valued, and `Unknown` is the most common.** 992 of 1,773 are
+  unrecorded upstream. Rendering that as "No" would be a lie about more than
+  half the directory, so it is shown as *unverified* and ranked between
+  confirmed and refused.
+
+**The unsearched view is dealt across categories**, not taken from the top of
+one. Ranked purely by usability it opened on a run of whichever category held
+the most no-key APIs — twenty-four cards that all said "Animals" describe the
+directory as narrow when it is the opposite.
+
+**The design** is the one extracted from [Bendy](https://trybendy.app/): the
+system UI stack at 13px/500, a 12/13/15/19/40 type scale, `#efefef` hairlines,
+4.6px corners on anything that holds content and a full pill on anything you
+press, and `#0000ee` as the only colour on the page. There are no shadows, no
+gradients and no filters in `public-api.css` at all — everything that would
+normally be a box is a rule. Light and dark resolve into a `data-pa-theme`
+attribute before first paint, sharing the mechanism in
+`composables/useToolTheme.ts` with `/n8n`; the accent lifts to `#8098ff` in
+dark, because `#0000ee` on black is about 2:1.
+
+**The hero parallax** is three layers on one `scroll(root block)` timeline,
+drifting at different rates — CSS only, no JavaScript, `transform` only. It is
+decorative, so it is progressive enhancement behind
+`@supports ((animation-timeline: scroll()) and (animation-range: entry))` and
+`prefers-reduced-motion: no-preference`; a browser without scroll-driven
+animations gets the same hero, still.
 
 Run its tests with `npm test`.
 

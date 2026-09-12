@@ -52,6 +52,7 @@ onUnmounted(() => {
       <a href="#contact">Contact</a>
       <NuxtLink to="/qr-generator">QR</NuxtLink>
       <NuxtLink to="/n8n">n8n</NuxtLink>
+      <NuxtLink to="/public-api">APIs</NuxtLink>
     </nav>
 
     <!-- Desktop socials -->
@@ -88,6 +89,7 @@ onUnmounted(() => {
           <a href="#contact" @click="close">Contact</a>
           <NuxtLink to="/qr-generator" @click="close">QR generator</NuxtLink>
           <NuxtLink to="/n8n" @click="close">n8n library</NuxtLink>
+          <NuxtLink to="/public-api" @click="close">Public API directory</NuxtLink>
         </nav>
 
         <div class="menu-overlay__footer">

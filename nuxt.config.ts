@@ -5,7 +5,7 @@ export default defineNuxtConfig({
 
   modules: ['@nuxtjs/tailwindcss', '@nuxt/image'],
 
-  css: ['~/assets/css/main.css', '~/assets/css/qr.css', '~/assets/css/n8n.css'],
+  css: ['~/assets/css/main.css', '~/assets/css/qr.css', '~/assets/css/n8n.css', '~/assets/css/public-api.css'],
 
   /*
    * Resize images at Netlify's edge rather than inside the server function.
@@ -156,6 +156,26 @@ export default defineNuxtConfig({
     '/n8n/workflows/**': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },
 
     /*
+     * The public API directory is the same shape as the n8n library: a static
+     * shell over one static data file, fetched by the browser after mount
+     * rather than during setup. Baking 456 kB of catalog into the prerendered
+     * HTML would slow first paint for no benefit, and would go stale the next
+     * time the catalog is regenerated.
+     *
+     * The catalog revalidates on every visit rather than being cached for a
+     * day, because it is the index of which ids exist: a stale one hands the
+     * page ids whose entries have been removed upstream, and every shared
+     * link to one of them is a dead end. That costs one conditional request
+     * answered with a 304 and a few hundred bytes.
+     *
+     * Do NOT pair that with `rel=preload` - a response that must revalidate
+     * is not served out of the preload cache, so the browser fetches it
+     * twice. This was measured on /n8n and the preload was removed there.
+     */
+    '/public-api': { prerender: true },
+    '/public-api/catalog.json': { headers: { 'cache-control': 'public, max-age=0, must-revalidate' } },
+
+    /*
      * The gallery is per-request by definition: it reads the session cookie.
      * `noindex` is belt-and-braces alongside robots.txt and the Netlify
      * X-Robots-Tag headers, for the case where a link leaks.
@@ -179,6 +199,9 @@ export default defineNuxtConfig({
     // `npm run build` honest when run anywhere else.
     // robots and the sitemap never change per request, so they are baked at
     // build time and served straight from the CDN.
-    prerender: { crawlLinks: false, routes: ['/', '/qr-generator', '/n8n', '/robots.txt', '/sitemap.xml'] },
+    prerender: {
+      crawlLinks: false,
+      routes: ['/', '/qr-generator', '/n8n', '/public-api', '/robots.txt', '/sitemap.xml'],
+    },
   },
 })

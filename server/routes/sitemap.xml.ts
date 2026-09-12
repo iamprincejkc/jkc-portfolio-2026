@@ -3,13 +3,14 @@
  *
  * Lists the public pages. /gallery and /evently are deliberately absent: they
  * are unlisted, and putting them here would be the fastest way to get them
- * indexed. /qr-generator and /n8n are genuinely public tools and belong here.
+ * indexed. /qr-generator, /n8n and /public-api are genuinely public tools and
+ * belong here.
  *
- * The per-workflow files under /n8n/ are data, not pages - they have no HTML,
- * no title and nothing to rank, so listing two thousand of them would spend
- * the crawl budget for this site on JSON.
+ * The per-workflow files under /n8n/ and the catalog under /public-api/ are
+ * data, not pages - they have no HTML, no title and nothing to rank, so
+ * listing them would spend the crawl budget for this site on JSON.
  */
-const PUBLIC_ROUTES = ['/', '/qr-generator', '/n8n']
+const PUBLIC_ROUTES = ['/', '/qr-generator', '/n8n', '/public-api']
 
 export default defineEventHandler((event) => {
   const siteUrl = String(useRuntimeConfig().public.siteUrl ?? '').replace(/\/$/, '')

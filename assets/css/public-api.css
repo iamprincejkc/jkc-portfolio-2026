@@ -1,0 +1,1815 @@
+/* ============================================================
+   Public API directory (/public-api)
+
+   A specimen sheet, not an app.
+
+   The whole page is built from three materials and nothing else: white paper,
+   a 1px hairline, and one blue. There are no shadows, no gradients, no
+   translucency and no filters anywhere in this file. Everything that would
+   normally be a box is a rule, and everything that would normally be a colour
+   is a weight - which is what makes the one accent, `#0000ee`, land as hard
+   as it does. It is used for exactly four things: focus, the current
+   selection, a link, and the browser-ready mark. Nothing else is ever blue.
+
+   The type is deliberately small. 13px at weight 500 on a 1.5 line-height is
+   the base, and the only large thing on the page is the hero title. Density
+   is the point: this is an index of nearly two thousand entries, and an index
+   that needs three screens per screenful of content is not an index.
+
+   ---------------------------------------------------------------------------
+   Theming
+
+   Every colour is a token, declared twice: once for light, once under
+   `html[data-pa-theme='dark']`. The attribute is always explicit - an inline
+   script in the page resolves the system preference into it before first
+   paint - so there is one dark block rather than one for the media query and
+   another for the override. It also sets `color-scheme`, which is what makes
+   the browser's own scrollbar and the search field's clear button match the
+   page instead of staying light on a dark one.
+
+   Dark is not light with the colours swapped. `#0000ee` on black is about
+   2:1 and unreadable, so the accent lifts to a light blue that clears 7:1 -
+   the same role, a different value. The hairline has to lift too: `#efefef`
+   inverted is `#101010`, which is invisible on a black ground, so it lands at
+   `#242424` instead.
+   ============================================================ */
+
+/*
+ * The material, declared on both the page and the layout wrapper the page
+ * asks for. The tool layout's back button floats outside `.pa-app` - it is a
+ * sibling of the page, not a child - so tokens declared only on the page
+ * would not reach it, and it would fall back to white-on-white.
+ */
+.pa-app,
+.tool-chrome--paper {
+  /* --- Ground and ink -------------------------------------------------
+     Bendy's `surface.muted` is the ground and `surface.raised` the panel;
+     the ink is its `text.secondary` for anything structural and
+     `text.primary` for prose, which is the opposite way round from how
+     those tokens are named and the right way round for how they read. */
+  --pa-bg: #ffffff;
+  --pa-bg-raised: #f5f5f5;
+  --pa-bg-sunk: #fafafa;
+  --pa-ink: #111111;
+  --pa-ink-soft: #6f6f6f;
+  --pa-ink-faint: #9b9b9b;
+
+  /* --- The hairline ----------------------------------------------------
+     One value does the whole page. `--pa-line-strong` is the ink itself and
+     is only ever used to mark the thing under the pointer. */
+  --pa-line: #efefef;
+  --pa-line-mid: #e2e2e2;
+  --pa-line-strong: #111111;
+
+  /* --- The one accent -------------------------------------------------- */
+  --pa-accent: #0000ee;
+  --pa-accent-ink: #ffffff;
+  /* The accent at the weight a background can carry without shouting. */
+  --pa-accent-wash: rgba(0, 0, 238, 0.06);
+  --pa-accent-line: rgba(0, 0, 238, 0.28);
+
+  --pa-invert-bg: #000000;
+  --pa-invert-ink: #ffffff;
+
+  /* --- Type ------------------------------------------------------------
+     The system stack, on purpose. A directory of technical reference reads
+     as an operating system's own list rather than as a designed page, and
+     the system UI face is the one typeface guaranteed to be hinted for
+     13px on the reader's own machine. It also costs nothing to load, which
+     on a page that already fetches 78 kB of catalog is worth having. */
+  --pa-font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'SF Pro Display', Inter, InterVariable, system-ui,
+    'Segoe UI', Roboto, sans-serif;
+  /*
+   * The one token not in the extracted set, and a deliberate addition
+   * rather than a one-off exception: a URL, a hostname and a header name
+   * are strings you read character by character, and a proportional face
+   * makes `rn` and `m` the same shape. It is declared here so every place
+   * that needs it uses the same stack.
+   */
+  --pa-mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
+
+  --pa-size-xs: 12px;
+  --pa-size-sm: 13px;
+  --pa-size-md: 15px;
+  --pa-size-lg: 19px;
+
+  /* --- Space ------------------------------------------------------------ */
+  --pa-1: 4px;
+  --pa-2: 6px;
+  --pa-3: 8px;
+  --pa-4: 12px;
+  --pa-5: 16px;
+  --pa-6: 18px;
+  --pa-7: 24px;
+  --pa-8: 48px;
+
+  /* --- Radius -----------------------------------------------------------
+     Crisp for anything that holds content, a full pill for anything you
+     press. That pairing is the page's one piece of shape vocabulary. */
+  --pa-r-xs: 4.6px;
+  --pa-r-sm: 20px;
+  --pa-r-pill: 999px;
+
+  /* --- Motion ----------------------------------------------------------- */
+  --pa-fast: 150ms;
+  --pa-mid: 200ms;
+  --pa-slow: 340ms;
+  --pa-ease: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /* --- Layout ------------------------------------------------------------ */
+  --pa-shell: 1320px;
+  --pa-gutter: 24px;
+  --pa-rail: 248px;
+
+  color-scheme: light;
+}
+
+html[data-pa-theme='dark'] :is(.pa-app, .tool-chrome--paper) {
+  --pa-bg: #000000;
+  --pa-bg-raised: #0e0e0e;
+  --pa-bg-sunk: #080808;
+  --pa-ink: #f2f2f2;
+  --pa-ink-soft: #9b9b9b;
+  --pa-ink-faint: #6f6f6f;
+
+  --pa-line: #242424;
+  --pa-line-mid: #333333;
+  --pa-line-strong: #f2f2f2;
+
+  /* `#0000ee` is ~2:1 on black. This is the same role at ~7.6:1. */
+  --pa-accent: #8098ff;
+  --pa-accent-ink: #000000;
+  --pa-accent-wash: rgba(128, 152, 255, 0.1);
+  --pa-accent-line: rgba(128, 152, 255, 0.36);
+
+  --pa-invert-bg: #ffffff;
+  --pa-invert-ink: #000000;
+
+  color-scheme: dark;
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
+
+.pa-app {
+  min-block-size: 100vh;
+  background: var(--pa-bg);
+  color: var(--pa-ink-soft);
+  font-family: var(--pa-font);
+  font-size: var(--pa-size-sm);
+  font-weight: 500;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  /*
+   * No horizontal clip here, because nothing needs one: the only element
+   * that overflows is the hero's oversized numeral, and the hero clips that
+   * itself.
+   *
+   * If one is ever needed, it must be `overflow-x: clip` and never
+   * `overflow-x: hidden`. `hidden` on one axis forces the other axis's
+   * `visible` to compute to `auto`, which makes this element a scroll
+   * container - and then the sticky search bar sticks to *this* box instead
+   * of the viewport and silently stops pinning. `clip` is exempt from that
+   * coercion, which is the reason it exists.
+   */
+}
+
+.pa-app ::selection {
+  background: var(--pa-accent);
+  color: var(--pa-accent-ink);
+}
+
+.pa-shell {
+  max-inline-size: var(--pa-shell);
+  margin-inline: auto;
+  padding-inline: var(--pa-gutter);
+}
+
+/* Visible to a screen reader, to nobody else. */
+.pa-sr {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/*
+ * One focus treatment for the whole page.
+ *
+ * Two pixels of the accent, offset so it never sits on the element's own
+ * border, and never removed - `:focus-visible` already limits it to keyboard
+ * use, which is the entire reason the outline is safe to make this loud.
+ */
+.pa-app :focus-visible,
+.tool-chrome--paper :focus-visible {
+  outline: 2px solid var(--pa-accent);
+  outline-offset: 2px;
+  border-radius: var(--pa-r-xs);
+}
+
+.pa-eyebrow {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pa-ink-faint);
+}
+
+/* ============================================================
+   Hero, and the parallax
+
+   Three layers on one scroll timeline. The rules furthest back drift least
+   and the numeral behind the copy drifts most, which is the whole trick:
+   depth is a difference in rate, not a difference in blur.
+
+   Only `transform` and `opacity` are animated, and neither layer carries a
+   filter. That is deliberate - a `scale()` or a size change on a filtered
+   element re-rasterises the filter every frame, which is how the /n8n page
+   ended up permanently heavy before its blurred background fields were
+   deleted. There is nothing to re-rasterise here.
+
+   The whole thing is progressive enhancement. Without scroll-driven
+   animations the layers simply sit still, and the hero is the same hero.
+   ============================================================ */
+
+.pa-hero {
+  position: relative;
+  isolation: isolate;
+  overflow: clip;
+  padding-block: 132px var(--pa-8);
+  border-block-end: 1px solid var(--pa-line);
+  /*
+   * Painted explicitly rather than left to inherit from `.pa-app`.
+   *
+   * This element creates a stacking context (`isolation: isolate`) and hosts
+   * children that scroll-driven animations promote to composited layers,
+   * which makes it a compositing root. A compositing root has no business
+   * relying on an ancestor for its ground - the site's `body` is near-black,
+   * so anything that composites against the root instead of against the page
+   * comes out dark rather than merely wrong.
+   *
+   * Cheap, and it removes a whole class of question. Same reasoning as
+   * giving `body` an explicit background instead of a transparent one.
+   */
+  background: var(--pa-bg);
+}
+
+.pa-hero__layer {
+  /* Every layer shares one keyframe and differs only in this. */
+  --pa-drift: 0px;
+}
+
+/*
+ * The column grid, drawn rather than laid out.
+ *
+ * A repeating gradient is one paint of one element; the same rules as
+ * elements would be twelve divs that all have to be composited and moved.
+ * Masked off at both ends so the drift never shows an edge.
+ */
+.pa-hero__rules {
+  position: absolute;
+  inset: -12% -2px;
+  z-index: 0;
+  background-image: repeating-linear-gradient(
+    to right,
+    var(--pa-line) 0 1px,
+    transparent 1px calc(100% / 12)
+  );
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 62%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 22%, #000 62%, transparent);
+}
+
+/*
+ * The count, set as an outline.
+ *
+ * It is the one piece of decoration on the page, and it is decoration that
+ * says something true: the number is read from the catalog, so it cannot
+ * disagree with the directory underneath it.
+ */
+.pa-hero__figure {
+  position: absolute;
+  inset-block-start: 8%;
+  inset-inline-end: -0.06em;
+  z-index: 0;
+  font-size: clamp(120px, 21vw, 300px);
+  font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.05em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--pa-line-mid);
+  user-select: none;
+}
+
+.pa-hero__copy {
+  position: relative;
+  z-index: 1;
+  max-inline-size: var(--pa-shell);
+  margin-inline: auto;
+  padding-inline: var(--pa-gutter);
+}
+
+.pa-hero__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-4);
+  margin-block-end: var(--pa-7);
+}
+
+.pa-hero__title {
+  max-inline-size: 18ch;
+  font-size: clamp(28px, 4.4vw, 44px);
+  font-weight: 600;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--pa-ink);
+  text-wrap: balance;
+}
+
+/* The only italic on the page, and the only word the title emphasises. */
+.pa-hero__title em {
+  font-style: italic;
+  color: var(--pa-accent);
+}
+
+.pa-hero__lede {
+  max-inline-size: 58ch;
+  margin-block-start: var(--pa-5);
+  font-size: var(--pa-size-md);
+  line-height: 1.62;
+  color: var(--pa-ink-soft);
+  text-wrap: pretty;
+}
+
+.pa-hero__lede code {
+  font-family: var(--pa-mono);
+  font-size: 0.88em;
+  color: var(--pa-ink);
+}
+
+/*
+ * The figures.
+ *
+ * Rules above rather than boxes around: a table of numbers wants a baseline
+ * to hang from, not a border to sit in.
+ */
+.pa-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pa-8);
+  margin-block-start: var(--pa-8);
+}
+
+.pa-stats div {
+  min-inline-size: 92px;
+  padding-block-start: var(--pa-3);
+  border-block-start: 1px solid var(--pa-line-strong);
+}
+
+.pa-stats dt {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pa-ink-faint);
+}
+
+.pa-stats dd {
+  margin-block-start: var(--pa-1);
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--pa-ink);
+}
+
+@keyframes pa-drift {
+  to {
+    transform: translate3d(0, var(--pa-drift), 0);
+  }
+}
+
+/*
+ * `(animation-range: entry)` is part of the test on purpose: some browsers
+ * ship `animation-timeline` without ranges, and a half-supported
+ * implementation is worse than none.
+ */
+/*
+ * Only the two decorative layers move. `.pa-hero__copy` - the eyebrow, the
+ * title, the lede, the figures - is deliberately left alone.
+ *
+ * It drifted by 14px at first, which was barely perceptible and not worth
+ * what it cost in risk: a scroll-driven animation promotes its element to a
+ * composited layer, and that put every word in the hero inside a surface
+ * whose painting this page no longer controls.
+ *
+ * The principle is worth keeping past this page: do not promote content into
+ * a composited layer for the sake of a decorative effect. Move the decoration
+ * instead. Then the worst a compositing problem can cost the reader is a faint
+ * grey rule, rather than the headline.
+ *
+ * Two layers left, and depth still reads - depth comes from the *difference*
+ * in rate between the drifting backdrop and the static text, not from
+ * everything moving at once.
+ */
+@supports ((animation-timeline: scroll()) and (animation-range: entry)) {
+  @media (prefers-reduced-motion: no-preference) {
+    .pa-hero__rules,
+    .pa-hero__figure {
+      animation: pa-drift linear both;
+      /* After the shorthand, or the shorthand resets them. */
+      animation-timeline: scroll(root block);
+      animation-range: 0 100vh;
+      /*
+       * Deliberately no `will-change`. An element with a running
+       * scroll-driven transform is promoted by the browser anyway, and a
+       * standing `will-change` keeps the layers alive for as long as the tab
+       * is open - including long after the hero has scrolled away and neither
+       * of them can be seen.
+       */
+    }
+
+    /* Furthest back drifts least. */
+    .pa-hero__rules {
+      --pa-drift: 34px;
+    }
+    .pa-hero__figure {
+      --pa-drift: 104px;
+    }
+  }
+}
+
+/*
+ * There is deliberately no scroll-progress hairline across the search bar.
+ *
+ * One was built and then taken out again, on judgement rather than on any
+ * technical grounds: the page paginates instead of scrolling forever, so
+ * "how far through am I" is already answered better by the result count and
+ * the button that says how many are left. A second, quieter answer to the
+ * same question is exactly the kind of decoration this design is trying not
+ * to accumulate.
+ */
+
+/* ============================================================
+   Search bar
+
+   Sticky, but only where there is somewhere for it to stick to. The tool
+   layout's back button is `position: fixed` in the top-left corner, so a
+   full-width bar pinned to `top: 0` would slide underneath it. Rather than
+   fight that, the button is pulled into line with the shell and the bar
+   reserves a gutter for it - so when the bar is stuck, the pill reads as its
+   leftmost control instead of as something floating on top of it.
+
+   Below the breakpoint there is no room for that gutter, so the bar simply
+   is not sticky. A sticky bar on a phone costs a fifth of the viewport, and
+   the search is one flick away.
+   ============================================================ */
+
+.pa-searchbar {
+  position: relative;
+  z-index: 20;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--pa-4) var(--pa-5);
+  padding-block: var(--pa-4);
+  background: var(--pa-bg);
+  border-block-end: 1px solid var(--pa-line);
+}
+
+.pa-search {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-3);
+  flex: 1 1 260px;
+  /* Without this the input's own min-content width stops the row wrapping. */
+  min-inline-size: 0;
+  padding-inline: var(--pa-4);
+  block-size: 40px;
+  background: var(--pa-bg-raised);
+  border: 1px solid transparent;
+  border-radius: var(--pa-r-pill);
+  transition:
+    border-color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-search:focus-within {
+  background: var(--pa-bg);
+  border-color: var(--pa-line-strong);
+}
+
+.pa-search__icon {
+  flex: none;
+  color: var(--pa-ink-faint);
+}
+
+.pa-search__input {
+  flex: 1;
+  min-inline-size: 0;
+  border: 0;
+  background: none;
+  color: var(--pa-ink);
+  font: inherit;
+  font-size: var(--pa-size-sm);
+}
+
+.pa-search__input::placeholder {
+  color: var(--pa-ink-faint);
+}
+
+.pa-search__input:focus {
+  outline: none;
+}
+
+/* The field is a `type="search"`, and Chrome's own clear button duplicates
+   the one next to it - at a size and colour this page does not control. */
+.pa-search__input::-webkit-search-cancel-button {
+  display: none;
+}
+
+.pa-searchbar__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-4);
+  flex-wrap: wrap;
+}
+
+.pa-count {
+  font-variant-numeric: tabular-nums;
+  color: var(--pa-ink-faint);
+  white-space: nowrap;
+}
+
+.pa-count strong {
+  font-weight: 600;
+  color: var(--pa-ink);
+}
+
+.pa-count span {
+  margin-inline-start: var(--pa-1);
+}
+
+.pa-chips,
+.pa-views {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-1);
+}
+
+.pa-views {
+  padding: 2px;
+  background: var(--pa-bg-raised);
+  border-radius: var(--pa-r-pill);
+}
+
+/* ============================================================
+   Controls
+   ============================================================ */
+
+.pa-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pa-2);
+  min-block-size: 30px;
+  padding-inline: var(--pa-4);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-bg);
+  color: var(--pa-ink-soft);
+  font: inherit;
+  font-size: var(--pa-size-xs);
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    border-color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-chip:hover {
+  color: var(--pa-ink);
+  border-color: var(--pa-line-strong);
+}
+
+/* Selected is the ink inverted, not the accent: the accent is reserved, and
+   a page with six blue chips on it has no accent left. */
+.pa-chip[aria-pressed='true'] {
+  background: var(--pa-invert-bg);
+  border-color: var(--pa-invert-bg);
+  color: var(--pa-invert-ink);
+}
+
+.pa-chip__count {
+  padding-inline: var(--pa-2);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-bg-raised);
+  color: var(--pa-ink-faint);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pa-chip[aria-pressed='true'] .pa-chip__count {
+  background: rgba(255, 255, 255, 0.16);
+  color: inherit;
+}
+
+html[data-pa-theme='dark'] .pa-chip[aria-pressed='true'] .pa-chip__count {
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.pa-view {
+  display: grid;
+  place-items: center;
+  inline-size: 30px;
+  block-size: 30px;
+  border: 0;
+  border-radius: var(--pa-r-pill);
+  background: none;
+  color: var(--pa-ink-faint);
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-view:hover {
+  color: var(--pa-ink);
+}
+
+.pa-view[aria-pressed='true'] {
+  background: var(--pa-bg);
+  color: var(--pa-ink);
+  box-shadow: 0 0 0 1px var(--pa-line);
+}
+
+.pa-icon-button {
+  display: grid;
+  place-items: center;
+  flex: none;
+  inline-size: 28px;
+  block-size: 28px;
+  border: 0;
+  border-radius: var(--pa-r-pill);
+  background: none;
+  color: var(--pa-ink-faint);
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-icon-button:hover {
+  background: var(--pa-bg-raised);
+  color: var(--pa-ink);
+}
+
+.pa-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pa-3);
+  min-block-size: 38px;
+  padding-inline: var(--pa-6);
+  border: 1px solid var(--pa-invert-bg);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-invert-bg);
+  color: var(--pa-invert-ink);
+  font: inherit;
+  font-size: var(--pa-size-sm);
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    opacity var(--pa-fast) var(--pa-ease),
+    transform var(--pa-fast) var(--pa-ease);
+}
+
+.pa-button:hover {
+  opacity: 0.82;
+}
+
+.pa-button:active {
+  transform: scale(0.985);
+}
+
+.pa-theme {
+  display: grid;
+  place-items: center;
+  inline-size: 32px;
+  block-size: 32px;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-bg);
+  color: var(--pa-ink-soft);
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    border-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-theme:hover {
+  color: var(--pa-ink);
+  border-color: var(--pa-line-strong);
+}
+
+/* Both glyphs are in the markup; CSS picks. Deciding in JavaScript would
+   disagree with the prerendered HTML for one frame. */
+.pa-theme__moon,
+html[data-pa-theme='dark'] .pa-theme__sun {
+  display: none;
+}
+
+html[data-pa-theme='dark'] .pa-theme__moon {
+  display: block;
+}
+
+/* ============================================================
+   Body layout
+   ============================================================ */
+
+.pa-body {
+  display: grid;
+  grid-template-columns: var(--pa-rail) minmax(0, 1fr);
+  gap: var(--pa-8);
+  align-items: start;
+  padding-block: var(--pa-7) var(--pa-8);
+}
+
+/*
+ * `min-inline-size: 0` is load-bearing, not defensive.
+ *
+ * A grid item defaults to `min-width: auto`, meaning "never narrower than my
+ * content". The longest category label is wider than the rail, so without
+ * this the track computes wider than the column it is in and every ellipsis
+ * further down has nothing to truncate against. It has to be on every level
+ * between the text and the fixed track, which is why it appears again on the
+ * rail, the option list and the row.
+ */
+.pa-rail-host,
+.pa-results {
+  min-inline-size: 0;
+}
+
+.pa-rail {
+  position: sticky;
+  inset-block-start: var(--pa-7);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pa-7);
+  min-inline-size: 0;
+  max-block-size: calc(100vh - var(--pa-8));
+  overflow-y: auto;
+  /* Stops every row shifting sideways when filtering removes the scrollbar. */
+  scrollbar-gutter: stable;
+  padding-inline-end: var(--pa-2);
+}
+
+.pa-rail__group {
+  min-inline-size: 0;
+}
+
+.pa-rail__hint {
+  margin-block-start: var(--pa-1);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--pa-ink-faint);
+}
+
+.pa-rail__options {
+  display: flex;
+  flex-direction: column;
+  min-inline-size: 0;
+  margin-block-start: var(--pa-3);
+  border-block-start: 1px solid var(--pa-line);
+}
+
+/*
+ * An option is a table row, not a chip.
+ *
+ * Fifty-one categories as pills is a wall of lozenges you have to read twice;
+ * as a list with the count right-aligned it is a table of contents, and the
+ * counts line up into a column you can scan on its own.
+ */
+.pa-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-3);
+  min-inline-size: 0;
+  min-block-size: 30px;
+  padding-inline: var(--pa-2);
+  border: 0;
+  border-block-end: 1px solid var(--pa-line);
+  background: none;
+  color: var(--pa-ink-soft);
+  font: inherit;
+  font-size: var(--pa-size-xs);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-option:hover {
+  background: var(--pa-bg-raised);
+  color: var(--pa-ink);
+}
+
+.pa-option__label {
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pa-option__count {
+  flex: none;
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--pa-ink-faint);
+}
+
+/* The selection is the accent, and it is marked on the edge rather than
+   filled - a filled row in a list of fifty reads as a highlight, a marked
+   edge reads as a position. */
+.pa-option[aria-pressed='true'] {
+  box-shadow: inset 2px 0 0 var(--pa-accent);
+  background: var(--pa-accent-wash);
+  color: var(--pa-accent);
+  font-weight: 600;
+}
+
+.pa-option[aria-pressed='true'] .pa-option__count {
+  color: var(--pa-accent);
+}
+
+.pa-rail__reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--pa-2);
+  min-block-size: 32px;
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-pill);
+  background: none;
+  color: var(--pa-ink-soft);
+  font: inherit;
+  font-size: var(--pa-size-xs);
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    border-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-rail__reset:hover {
+  color: var(--pa-ink);
+  border-color: var(--pa-line-strong);
+}
+
+/* ------------------------------------------------------------
+   The browser-ready switch
+   ------------------------------------------------------------ */
+
+.pa-switch {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--pa-4);
+  padding: var(--pa-4);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-xs);
+  background: none;
+  text-align: start;
+  cursor: pointer;
+  transition:
+    border-color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-switch:hover {
+  border-color: var(--pa-line-mid);
+}
+
+.pa-switch[aria-checked='true'] {
+  border-color: var(--pa-accent-line);
+  background: var(--pa-accent-wash);
+}
+
+.pa-switch__track {
+  flex: none;
+  position: relative;
+  inline-size: 30px;
+  block-size: 18px;
+  margin-block-start: 1px;
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-line-mid);
+  transition: background-color var(--pa-mid) var(--pa-ease);
+}
+
+.pa-switch[aria-checked='true'] .pa-switch__track {
+  background: var(--pa-accent);
+}
+
+.pa-switch__knob {
+  position: absolute;
+  inset-block-start: 2px;
+  inset-inline-start: 2px;
+  inline-size: 14px;
+  block-size: 14px;
+  border-radius: 50%;
+  background: var(--pa-bg);
+  transition: transform var(--pa-mid) var(--pa-ease);
+}
+
+.pa-switch[aria-checked='true'] .pa-switch__knob {
+  transform: translateX(12px);
+}
+
+.pa-switch__text {
+  min-inline-size: 0;
+}
+
+.pa-switch__label {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-2);
+  font-size: var(--pa-size-sm);
+  font-weight: 600;
+  color: var(--pa-ink);
+}
+
+.pa-switch[aria-checked='true'] .pa-switch__label {
+  color: var(--pa-accent);
+}
+
+.pa-switch__note {
+  display: block;
+  margin-block-start: 2px;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--pa-ink-faint);
+}
+
+/* ============================================================
+   Results
+   ============================================================ */
+
+.pa-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: var(--pa-5);
+}
+
+.pa-rows {
+  display: flex;
+  flex-direction: column;
+  border-block-start: 1px solid var(--pa-line);
+}
+
+/* ------------------------------------------------------------
+   Card
+
+   The click target is a transparent button stretched across the whole card,
+   sitting above the content in the stacking order but below the one anchor
+   that has somewhere else to go. Content itself is unpositioned, so it paints
+   underneath the button and every click on the card - name, description,
+   badges - opens the panel. The documentation link is positioned above both.
+   ------------------------------------------------------------ */
+
+.pa-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pa-3);
+  min-inline-size: 0;
+  padding: var(--pa-5);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-xs);
+  background: var(--pa-bg);
+  transition:
+    border-color var(--pa-mid) var(--pa-ease),
+    transform var(--pa-mid) var(--pa-ease);
+}
+
+.pa-card:hover {
+  border-color: var(--pa-line-strong);
+  transform: translateY(-2px);
+}
+
+.pa-card:has(.pa-card__hit:focus-visible) {
+  border-color: var(--pa-accent);
+}
+
+/* A browser-ready card is marked on its leading edge. It is the only place
+   on a card the accent appears, so a screenful of them reads as a stripe
+   pattern you can count without reading a word. */
+.pa-card[data-ready] {
+  box-shadow: inset 2px 0 0 var(--pa-accent);
+}
+
+.pa-card__hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  inline-size: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: var(--pa-r-xs);
+  background: none;
+  cursor: pointer;
+}
+
+.pa-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-3);
+  min-inline-size: 0;
+}
+
+.pa-card__category {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pa-ink-faint);
+}
+
+.pa-card__ready {
+  flex: none;
+  display: grid;
+  place-items: center;
+  inline-size: 18px;
+  block-size: 18px;
+  border-radius: 50%;
+  background: var(--pa-accent);
+  color: var(--pa-accent-ink);
+}
+
+.pa-card__name {
+  font-size: var(--pa-size-md);
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--pa-ink);
+  overflow-wrap: anywhere;
+}
+
+.pa-card__desc {
+  /* Three lines, then an ellipsis. The upstream descriptions run from three
+     words to forty, and letting the longest one set the row height leaves a
+     grid of mostly-empty cards. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  color: var(--pa-ink-soft);
+  text-wrap: pretty;
+}
+
+/*
+ * Two rows, not one.
+ *
+ * The badges and the hostname were tried side by side and lost: three badges
+ * need about 190px, and a host like `api.openweathermap.org` needs most of a
+ * 236px card to itself, so one of them was always truncated into
+ * uselessness - and the one being truncated was the host, which is the only
+ * field that says who is behind the API.
+ *
+ * Pushed to the bottom, so the footer lines up across a whole row of cards
+ * whatever length their descriptions came out.
+ */
+.pa-card__foot {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--pa-3);
+  min-inline-size: 0;
+  margin-block-start: auto;
+  padding-block-start: var(--pa-4);
+  border-block-start: 1px solid var(--pa-line);
+}
+
+.pa-card__link {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-2);
+  min-inline-size: 0;
+  color: var(--pa-ink-faint);
+  text-decoration: none;
+  transition: color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-card__link:hover {
+  color: var(--pa-accent);
+}
+
+.pa-card__host {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--pa-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------
+   Row
+   ------------------------------------------------------------ */
+
+.pa-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px auto 32px;
+  align-items: center;
+  gap: var(--pa-5);
+  min-inline-size: 0;
+  padding: var(--pa-3) var(--pa-2);
+  border-block-end: 1px solid var(--pa-line);
+  transition: background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-row:hover {
+  background: var(--pa-bg-raised);
+}
+
+.pa-row[data-ready] {
+  box-shadow: inset 2px 0 0 var(--pa-accent);
+}
+
+.pa-row__main {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pa-4);
+  min-inline-size: 0;
+}
+
+.pa-row__name {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pa-2);
+  max-inline-size: 40%;
+  overflow: hidden;
+  font-size: var(--pa-size-sm);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pa-ink);
+}
+
+.pa-row__ready {
+  color: var(--pa-accent);
+}
+
+.pa-row__desc {
+  min-inline-size: 0;
+  overflow: hidden;
+  font-size: var(--pa-size-xs);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pa-ink-faint);
+}
+
+.pa-row__category {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pa-ink-faint);
+}
+
+.pa-row__link {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  inline-size: 28px;
+  block-size: 28px;
+  border-radius: var(--pa-r-pill);
+  color: var(--pa-ink-faint);
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-row__link:hover {
+  background: var(--pa-bg);
+  color: var(--pa-accent);
+}
+
+/* ------------------------------------------------------------
+   Badges
+   ------------------------------------------------------------ */
+
+.pa-badges {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-3);
+  min-inline-size: 0;
+  list-style: none;
+}
+
+.pa-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--pa-ink-faint);
+}
+
+.pa-badge[data-tone='good'] {
+  color: var(--pa-ink);
+}
+
+/* Refused is not an error, so it is not red - it is struck through, which
+   says "this route is closed" without claiming anything is broken. */
+.pa-badge[data-tone='bad'] {
+  color: var(--pa-ink-faint);
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+
+.pa-badges--compact .pa-badge span:not(.pa-sr) {
+  /* On a row the labels are redundant next to the icons, and the row has to
+     fit a category column as well. The title attribute and the visually
+     hidden text both survive. */
+  display: none;
+}
+
+/* ------------------------------------------------------------
+   Skeleton, notes, pagination
+   ------------------------------------------------------------ */
+
+.pa-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pa-4);
+  block-size: 168px;
+  padding: var(--pa-5);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-xs);
+}
+
+.pa-skeleton__line {
+  block-size: 8px;
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-bg-raised);
+}
+
+.pa-skeleton__line--eyebrow {
+  inline-size: 34%;
+  block-size: 6px;
+}
+
+.pa-skeleton__line--title {
+  inline-size: 62%;
+  block-size: 12px;
+}
+
+.pa-skeleton__line--short {
+  inline-size: 44%;
+}
+
+.pa-note {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pa-4);
+  padding: 72px var(--pa-7);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-xs);
+  text-align: center;
+  color: var(--pa-ink-soft);
+}
+
+.pa-note p {
+  max-inline-size: 46ch;
+  text-wrap: pretty;
+}
+
+.pa-note__title {
+  font-size: var(--pa-size-lg);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--pa-ink);
+}
+
+.pa-more {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pa-3);
+  padding-block-start: var(--pa-8);
+}
+
+.pa-more__note {
+  font-size: var(--pa-size-xs);
+  color: var(--pa-ink-faint);
+}
+
+/* ============================================================
+   Colophon
+   ============================================================ */
+
+.pa-colophon {
+  display: grid;
+  gap: var(--pa-4);
+  max-inline-size: 78ch;
+  padding-block: var(--pa-7) 96px;
+  border-block-start: 1px solid var(--pa-line);
+  font-size: var(--pa-size-xs);
+  line-height: 1.65;
+  color: var(--pa-ink-faint);
+  text-wrap: pretty;
+}
+
+.pa-colophon a {
+  color: var(--pa-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-thickness: 1px;
+}
+
+.pa-colophon em {
+  font-style: italic;
+  color: var(--pa-ink-soft);
+}
+
+/* ============================================================
+   Detail panel
+
+   A native `<dialog>`, so the focus trap, the top layer and the inert
+   background come from the browser rather than from a hand-rolled overlay.
+   It is *styled* as a drawer: on a page whose job is scanning a list, sliding
+   a panel in beside the list keeps the list where it was.
+   ============================================================ */
+
+.pa-panel {
+  --pa-panel-w: 460px;
+
+  position: fixed;
+  inset: 0 0 0 auto;
+  max-block-size: 100dvh;
+  block-size: 100dvh;
+  inline-size: min(var(--pa-panel-w), 100vw);
+  max-inline-size: none;
+  padding: 0;
+  border: 0;
+  border-inline-start: 1px solid var(--pa-line);
+  background: var(--pa-bg);
+  color: var(--pa-ink-soft);
+  font-family: var(--pa-font);
+  font-size: var(--pa-size-sm);
+  line-height: 1.5;
+  overflow: visible;
+}
+
+.pa-panel::backdrop {
+  background: rgba(17, 17, 17, 0.28);
+}
+
+html[data-pa-theme='dark'] .pa-panel::backdrop {
+  background: rgba(0, 0, 0, 0.62);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pa-panel[open] {
+    animation: pa-panel-in var(--pa-slow) var(--pa-ease);
+  }
+
+  .pa-panel[open]::backdrop {
+    animation: pa-fade-in var(--pa-mid) var(--pa-ease);
+  }
+}
+
+@keyframes pa-panel-in {
+  from {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pa-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.pa-panel__inner {
+  display: flex;
+  flex-direction: column;
+  block-size: 100%;
+  min-block-size: 0;
+}
+
+.pa-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-4);
+  flex: none;
+  padding: var(--pa-4) var(--pa-5);
+  border-block-end: 1px solid var(--pa-line);
+}
+
+.pa-panel__category {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pa-2);
+  min-inline-size: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--pa-ink-faint);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-panel__category:hover {
+  color: var(--pa-accent);
+}
+
+.pa-panel__body {
+  flex: 1;
+  min-block-size: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--pa-7) var(--pa-5) var(--pa-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pa-5);
+}
+
+.pa-panel__name {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1.16;
+  letter-spacing: -0.03em;
+  color: var(--pa-ink);
+  overflow-wrap: anywhere;
+}
+
+.pa-panel__desc {
+  font-size: var(--pa-size-md);
+  line-height: 1.6;
+  color: var(--pa-ink-soft);
+  text-wrap: pretty;
+}
+
+.pa-panel__ready {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: var(--pa-2);
+  padding: var(--pa-2) var(--pa-4);
+  border: 1px solid var(--pa-accent-line);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-accent-wash);
+  color: var(--pa-accent);
+  font-size: var(--pa-size-xs);
+  font-weight: 600;
+}
+
+.pa-url {
+  display: flex;
+  align-items: center;
+  gap: var(--pa-2);
+  min-inline-size: 0;
+  padding: var(--pa-2) var(--pa-2) var(--pa-2) var(--pa-4);
+  border: 1px solid var(--pa-line);
+  border-radius: var(--pa-r-xs);
+  background: var(--pa-bg-sunk);
+}
+
+.pa-url__text {
+  flex: 1;
+  min-inline-size: 0;
+  overflow: hidden;
+  font-family: var(--pa-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--pa-ink-soft);
+}
+
+.pa-facts {
+  display: grid;
+  gap: var(--pa-1);
+  padding-block-start: var(--pa-3);
+  border-block-start: 1px solid var(--pa-line);
+}
+
+.pa-facts dt {
+  margin-block-start: var(--pa-4);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pa-ink-faint);
+}
+
+.pa-facts dd {
+  color: var(--pa-ink);
+  text-wrap: pretty;
+}
+
+.pa-related {
+  padding-block-start: var(--pa-4);
+  border-block-start: 1px solid var(--pa-line);
+}
+
+.pa-related ul {
+  margin-block-start: var(--pa-3);
+  list-style: none;
+  border-block-start: 1px solid var(--pa-line);
+}
+
+.pa-related button {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--pa-3);
+  inline-size: 100%;
+  min-inline-size: 0;
+  min-block-size: 36px;
+  padding-inline: var(--pa-2);
+  border: 0;
+  border-block-end: 1px solid var(--pa-line);
+  background: none;
+  color: var(--pa-ink-soft);
+  font: inherit;
+  font-size: var(--pa-size-xs);
+  text-align: start;
+  cursor: pointer;
+  transition:
+    color var(--pa-fast) var(--pa-ease),
+    background-color var(--pa-fast) var(--pa-ease);
+}
+
+.pa-related button:hover {
+  background: var(--pa-bg-raised);
+  color: var(--pa-ink);
+}
+
+.pa-related__name {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pa-2);
+  min-inline-size: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pa-related__name svg {
+  flex: none;
+  color: var(--pa-accent);
+}
+
+.pa-related button svg:last-child {
+  flex: none;
+  color: var(--pa-ink-faint);
+}
+
+/* ============================================================
+   The tool layout's chrome, restyled for paper
+
+   The default is white glass over a dark page, which on this one would be
+   white on near-white. Two classes beats the layout's scoped single class.
+   ============================================================ */
+
+/*
+ * The bar is stretched across the viewport and padded, rather than the button
+ * being nudged with `left`, so the pill lines up with the shell's own content
+ * edge at every width - which is what makes it land inside the gutter the
+ * sticky search bar reserves for it instead of floating over the results.
+ *
+ * A full-width fixed element would swallow every click along the top of the
+ * page, including the search field once the bar is stuck, so the bar itself
+ * is transparent to the pointer and only the pill takes clicks back.
+ */
+.tool-chrome--paper .tool-header {
+  left: 0;
+  right: 0;
+  justify-content: flex-start;
+  padding-inline-start: max(var(--pa-gutter), calc(50vw - var(--pa-shell) / 2 + var(--pa-gutter)));
+  pointer-events: none;
+}
+
+.tool-chrome--paper .tool-header__back {
+  pointer-events: auto;
+  min-block-size: 32px;
+  /*
+   * A stronger line than the page's own hairline, on purpose. This pill is
+   * the one element that floats over the content rather than sitting in it,
+   * and below the sticky breakpoint it passes over white cards that are
+   * themselves outlined in `--pa-line`. At the same weight it reads as a
+   * collision; one step darker and it reads as chrome.
+   */
+  border: 1px solid var(--pa-line-mid);
+  border-radius: var(--pa-r-pill);
+  background: var(--pa-bg);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  font-size: var(--pa-size-xs);
+  transition:
+    border-color var(--pa-fast) var(--pa-ease),
+    color var(--pa-fast) var(--pa-ease);
+}
+
+.tool-chrome--paper .tool-header__brand {
+  color: var(--pa-ink);
+  font-weight: 600;
+}
+
+.tool-chrome--paper .tool-header__sep {
+  color: var(--pa-line-mid);
+}
+
+.tool-chrome--paper .tool-header__title {
+  color: var(--pa-ink-soft);
+}
+
+.tool-chrome--paper .tool-header__back:hover {
+  transform: none;
+  border-color: var(--pa-line-strong);
+}
+
+.tool-chrome--paper .tool-header__back:hover .tool-header__title {
+  color: var(--pa-ink);
+}
+
+.tool-chrome--paper .tool-header__back:active {
+  transform: scale(0.97);
+}
+
+.tool-chrome--paper .tool-skip:focus {
+  background: var(--pa-invert-bg);
+  color: var(--pa-invert-ink);
+}
+
+/* ============================================================
+   Responsive
+
+   Three arrangements: the desktop two-column with a sticky bar and a sticky
+   rail, a tablet one-column with the rail behind a disclosure, and a phone
+   layout where the rail becomes a full-width panel above the results.
+   ============================================================ */
+
+@media (min-width: 1024px) {
+  .pa-searchbar {
+    position: sticky;
+    inset-block-start: 0;
+    /* The gutter the fixed back button sits in. Only reserved where the bar
+       is sticky, because only then can the two collide. */
+    padding-inline-start: 188px;
+  }
+
+  .pa-rail-toggle {
+    display: none;
+  }
+}
+
+@media (max-width: 1023px) {
+  .pa-hero {
+    padding-block-start: 104px;
+  }
+
+  .pa-body {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--pa-5);
+  }
+
+  /*
+   * Always rendered, revealed by CSS.
+   *
+   * `v-show` would need the breakpoint in JavaScript to decide, which then
+   * disagrees with this stylesheet the first time either one changes.
+   */
+  .pa-rail-host {
+    display: none;
+  }
+
+  .pa-rail-host[data-open='true'] {
+    display: block;
+  }
+
+  .pa-rail {
+    position: static;
+    max-block-size: none;
+    overflow: visible;
+    padding: var(--pa-5);
+    border: 1px solid var(--pa-line);
+    border-radius: var(--pa-r-xs);
+  }
+
+  .pa-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--pa-3) var(--pa-4);
+  }
+
+  .pa-row__category {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .pa-app {
+    --pa-gutter: 16px;
+  }
+
+  .pa-hero {
+    padding-block: 92px var(--pa-7);
+  }
+
+  .pa-stats {
+    gap: var(--pa-7);
+  }
+
+  .pa-stats dd {
+    font-size: 22px;
+  }
+
+  .pa-searchbar__meta {
+    inline-size: 100%;
+    justify-content: space-between;
+  }
+
+  /* Three sort chips plus a filter button plus a view toggle does not fit,
+     and the sort is the one you change least. */
+  .pa-chips {
+    order: 3;
+    inline-size: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .pa-chips::-webkit-scrollbar {
+    display: none;
+  }
+
+  .pa-row__main {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+  }
+
+  .pa-row__name {
+    max-inline-size: 100%;
+  }
+
+  .pa-panel {
+    --pa-panel-w: 100vw;
+    border-inline-start: 0;
+  }
+}
+
+/* ============================================================
+   Reduced motion
+
+   The parallax is already gated behind `prefers-reduced-motion: no-preference`
+   at its declaration, so there is nothing to unwind here. What is left is the
+   incidental movement: the hover lift, the panel's slide, the switch knob.
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+  .pa-app *,
+  .tool-chrome--paper * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .pa-card:hover {
+    transform: none;
+  }
+}
