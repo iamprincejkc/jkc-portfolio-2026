@@ -48,7 +48,7 @@ onUnmounted(() => {
     <!-- Desktop inline nav -->
     <nav class="site-header__nav-desktop">
       <a href="#work">Work</a>
-      <a href="#about">About</a>
+      <NuxtLink to="/about">About</NuxtLink>
       <a href="#contact">Contact</a>
       <NuxtLink to="/qr-generator">QR</NuxtLink>
       <NuxtLink to="/n8n">n8n</NuxtLink>
@@ -85,7 +85,7 @@ onUnmounted(() => {
         <nav class="menu-overlay__nav">
           <a href="#" @click="close">Home</a>
           <a href="#work" @click="close">Work</a>
-          <a href="#about" @click="close">About</a>
+          <NuxtLink to="/about" @click="close">About</NuxtLink>
           <a href="#contact" @click="close">Contact</a>
           <NuxtLink to="/qr-generator" @click="close">QR generator</NuxtLink>
           <NuxtLink to="/n8n" @click="close">n8n library</NuxtLink>
