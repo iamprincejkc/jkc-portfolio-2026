@@ -46,7 +46,10 @@ const CSP = [
   // Cloudinary serves the gallery; Last.fm serves album art for the hero card.
   "img-src 'self' data: blob: https://res.cloudinary.com https://lastfm.freetls.fastly.net",
   // Uploads go straight to Cloudinary with a signature minted server-side.
-  "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com",
+  // The wss:// hosts are the Nostr relays Evently's shared worlds use to find
+  // each other for "walk together" - pinned in Evently's src/live/room.ts, and
+  // the three lists must change together.
+  "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com wss://nos.lol wss://relay.primal.net wss://nostr.mom wss://purplerelay.com",
   "media-src 'self'",
   "worker-src 'self' blob:",
   "manifest-src 'self'",

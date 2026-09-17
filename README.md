@@ -297,6 +297,39 @@ animations gets the same hero, still.
 
 Run its tests with `npm test`.
 
+## Evently shared worlds (`/evently/create.html`)
+
+`/evently/` is a prebuilt Three.js bundle from `Personal/Evently`, published into
+`public/evently/` with `npm run publish:portfolio` there. Never hand-edit that folder.
+
+Anyone can make their own world at `/evently/create.html` and send it as a link or
+QR code. This site stores those worlds and cannot read them: the browser encrypts
+each world and photo with a key that lives only in the link's `#fragment`. Full
+design in `Personal/Evently/SPEC.md` section 18.
+
+The server half is here:
+
+```
+server/utils/evently.ts         ← ids, token hashing, If-Match parsing, size rules (unit-tested)
+server/utils/evently-store.ts   ← storage access and request guards
+server/api/evently/worlds/      ← POST reserve · GET/PUT/DELETE a world · GET/PUT/DELETE a photo
+```
+
+Storage is the `evently` mount in `nuxt.config.ts`: Netlify Blobs with **strong**
+consistency in production, `.data/evently` (gitignored) in development. Nothing to
+configure - Netlify functions get a Blobs context automatically.
+
+People in the same world at the same time see each other live, phone to phone over
+WebRTC. Nothing here relays their movement. Two pieces live in this repo:
+
+- `GET /api/evently/ice` (`server/utils/evently-ice.ts`) - STUN only by default.
+  Set `NUXT_CLOUDFLARE_TURN_KEY_ID` and `NUXT_CLOUDFLARE_TURN_API_TOKEN` (Cloudflare
+  Realtime TURN, free tier) so phones on networks that block direct connections can
+  still see each other.
+- The four Nostr relays the phones use to find each other are named in `connect-src`.
+  `server/utils/csp-in-step.test.ts` fails if the deployed bundle's relays and the
+  policy drift apart, or if `netlify.toml` and the middleware do.
+
 ## Security and licensing
 
 - **[SECURITY.md](SECURITY.md)** — how to report something, what protects what

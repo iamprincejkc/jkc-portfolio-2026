@@ -68,7 +68,8 @@ export default defineNuxtConfig({
    *
    *   NUXT_AUTH_SECRET, NUXT_SITE_PIN, NUXT_ADMIN_PIN,
    *   NUXT_CLOUDINARY_API_KEY, NUXT_CLOUDINARY_API_SECRET,
-   *   NUXT_CLOUDINARY_FOLDER, NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME
+   *   NUXT_CLOUDINARY_FOLDER, NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+   *   NUXT_CLOUDFLARE_TURN_KEY_ID, NUXT_CLOUDFLARE_TURN_API_TOKEN (optional, Evently)
    */
   runtimeConfig: {
     authSecret: '',
@@ -92,6 +93,13 @@ export default defineNuxtConfig({
     resendApiKey: '',
     contactToEmail: '',
     contactFromEmail: '',
+    /*
+     * Optional TURN relay for Evently's "walk together" mode, from Cloudflare's
+     * free tier. Unset, phones on networks that block direct connections simply
+     * walk alone. See server/utils/evently-ice.ts.
+     */
+    cloudflareTurnKeyId: '',
+    cloudflareTurnApiToken: '',
     public: {
       // The cloud name appears in every image URL, so it is public by nature.
       cloudinaryCloudName: '',
@@ -201,6 +209,26 @@ export default defineNuxtConfig({
   },
 
   nitro: {
+    /*
+     * Evently's shared worlds: encrypted documents and photos, stored as opaque
+     * bytes. See server/utils/evently.ts.
+     *
+     * Netlify Blobs in production. `strong` consistency is not optional here:
+     * the default is eventual, where a read can trail a write by up to a
+     * minute - so someone saving a letter and immediately opening the link
+     * would see the old one, and the version check that protects concurrent
+     * editors would be comparing against a stale number.
+     *
+     * A plain folder in development, because Blobs only has a context inside a
+     * Netlify function. `.data/` is gitignored.
+     */
+    storage: {
+      evently: { driver: 'netlify-blobs', name: 'evently-worlds', consistency: 'strong' },
+    },
+    devStorage: {
+      evently: { driver: 'fs', base: './.data/evently' },
+    },
+
     // Netlify auto-detects its preset during a Netlify build; this keeps
     // `npm run build` honest when run anywhere else.
     // robots and the sitemap never change per request, so they are baked at

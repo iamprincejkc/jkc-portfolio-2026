@@ -7,14 +7,16 @@
       content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover"
     />
     <meta name="theme-color" content="#2b1a4a" />
+    <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="description" content="A small world of us." />
     <title>Piney</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>" />
-    <script type="module" crossorigin src="./assets/index-Dep24oWg.js"></script>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌲</text></svg>" />
+    <script type="module" crossorigin src="./assets/world-D9yhCtZf.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/share-BQQOXtwV.js">
     <link rel="modulepreload" crossorigin href="./assets/three-BKfbQnZk.js">
-    <link rel="stylesheet" crossorigin href="./assets/index-B4sTUjuh.css">
+    <link rel="stylesheet" crossorigin href="./assets/world-Bz_HinRR.css">
   </head>
   <body>
     <canvas id="scene"></canvas>
@@ -26,6 +28,12 @@
         <p id="intro-subtitle">&nbsp;</p>
         <div id="intro-progress" class="progress"><i></i></div>
         <p id="intro-hint" class="hint">&nbsp;</p>
+        <!-- Shared worlds only: who you are to anyone else walking it at the same time. -->
+        <div id="intro-who" class="intro-who hidden">
+          <label for="intro-name">Your name</label>
+          <input id="intro-name" type="text" maxlength="24" autocomplete="nickname" enterkeyhint="go" placeholder="so they know it's you" />
+          <p id="intro-skin" class="intro-skin"></p>
+        </div>
         <button id="intro-begin" class="btn primary" disabled>Begin</button>
       </div>
     </div>
@@ -33,10 +41,15 @@
     <!-- In-world HUD -->
     <div id="hud" class="hud hidden">
       <div id="hud-count" class="pill" aria-live="polite">0 / 0</div>
+      <div id="presence" class="pill presence hidden" aria-live="polite"></div>
+      <div id="peers" class="peers" aria-hidden="true"></div>
+      <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
       <div class="hud-buttons">
+        <button id="btn-heart" class="icon-btn heart-btn hidden" aria-label="Send a heart to everyone here">♥</button>
         <button id="btn-sound" class="icon-btn" aria-label="Toggle sound" aria-pressed="false">♪</button>
         <button id="btn-motion" class="icon-btn" aria-label="Toggle reduced motion" aria-pressed="false">✦</button>
         <button id="btn-list" class="icon-btn" aria-label="Show all memories">☰</button>
+        <a id="btn-edit" class="icon-btn hidden" aria-label="Edit this world" title="Edit this world">✎</a>
       </div>
       <div id="prompt" class="prompt hidden">
         <span id="prompt-label"></span>
@@ -61,6 +74,7 @@
         <h2 id="finale-title" class="finale-title"></h2>
         <p id="finale-text"></p>
         <button id="finale-again" class="btn">walk again</button>
+        <a id="finale-make" class="finale-make hidden" href="create.html">make a world for someone</a>
       </div>
     </div>
 
@@ -73,6 +87,6 @@
       </header>
       <main id="fb-list"></main>
     </div>
-
+
   </body>
 </html>
