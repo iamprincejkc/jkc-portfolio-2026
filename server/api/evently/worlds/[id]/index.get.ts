@@ -1,24 +1,27 @@
-import { keys, versionTag } from '../../../../utils/evently'
+import { VERSION_HEADERS, keys, parseVersion } from '../../../../utils/evently'
 import { eventlyStore, readMeta, sendOpaque, worldIdParam } from '../../../../utils/evently-store'
 
 /**
  * The encrypted world document.
  *
- * Revalidated on every visit rather than cached: an edit has to reach the
- * person it was written for the next time they open the link. The version is
- * the entity tag, so a revisit with nothing changed costs a 304.
+ * Never cached: an edit has to reach the person it was written for the next
+ * time they open the link. An editor checking for someone else's changes sends
+ * the version it already has and gets an empty 204 while that is still current,
+ * which costs one metadata read and no document transfer.
+ *
+ * The version is in a header of our own rather than an ETag - see
+ * VERSION_HEADERS for why.
  */
 export default defineEventHandler(async (event) => {
   const id = worldIdParam(event)
-  setResponseHeader(event, 'cache-control', 'private, no-cache')
+  setResponseHeader(event, 'cache-control', 'no-store')
 
   const meta = await readMeta(id)
   if (!meta || meta.version === 0) throw createError({ statusCode: 404, statusMessage: 'No such world.' })
 
-  const tag = versionTag(meta.version)
-  setResponseHeader(event, 'etag', tag)
-  if (getRequestHeader(event, 'if-none-match') === tag) {
-    setResponseStatus(event, 304)
+  setResponseHeader(event, VERSION_HEADERS.current, String(meta.version))
+  if (parseVersion(getRequestHeader(event, VERSION_HEADERS.known)) === meta.version) {
+    setResponseStatus(event, 204)
     return null
   }
 

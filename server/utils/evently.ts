@@ -17,8 +17,8 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
  * - The server cannot validate content it cannot read, so it validates the
  *   only things it can see: identifiers, sizes, counts and versions.
  * - Concurrent editors (a world can be shared for editing) are kept honest with
- *   a version number and `If-Match`, so a stale tab cannot silently overwrite
- *   someone else's letter.
+ *   a version number the editor must send back, so a stale tab cannot silently
+ *   overwrite someone else's letter.
  *
  * Everything here is pure and takes its inputs as arguments. The storage calls
  * live in the route handlers.
@@ -85,21 +85,34 @@ export function bearerToken(header: string | null | undefined): string | null {
   return match ? match[1]! : null
 }
 
-/** A world's current version as an entity tag. Strong, because the bytes are exact. */
-export function versionTag(version: number): string {
-  return `"${version}"`
-}
+/**
+ * Versions travel in headers of our own, not in ETag / If-Match / If-None-Match.
+ *
+ * The standard conditional headers were the first design and worked in every
+ * local test. In production, Netlify's edge consumes them before the function
+ * runs: a PUT sent with `If-Match: "0"` arrived with no If-Match at all, so every
+ * save was refused with 428 and no world could be created. Headers the CDN has
+ * no meaning for pass through untouched.
+ */
+export const VERSION_HEADERS = {
+  /** Response: the world's current version. */
+  current: 'x-evently-version',
+  /** PUT request: the version this edit started from. */
+  base: 'x-evently-base-version',
+  /** GET request: the version the caller already has; answered 204 when still current. */
+  known: 'x-evently-known-version',
+} as const
 
 /**
- * Parses `If-Match` into the version it names.
+ * Parses a version header.
  *
- * Returns null for anything that is not exactly one strong tag holding a
- * non-negative integer. A write without a usable precondition is refused
- * rather than treated as unconditional: the unconditional write is precisely
- * the one that loses someone else's edit.
+ * Returns null for anything that is not a plain non-negative integer. A write
+ * without a usable base version is refused rather than treated as
+ * unconditional: the unconditional write is precisely the one that loses
+ * someone else's edit.
  */
-export function parseIfMatch(header: string | null | undefined): number | null {
-  const match = /^"(\d{1,9})"$/.exec(header?.trim() ?? '')
+export function parseVersion(header: string | null | undefined): number | null {
+  const match = /^(\d{1,9})$/.exec(header?.trim() ?? '')
   return match ? Number(match[1]) : null
 }
 

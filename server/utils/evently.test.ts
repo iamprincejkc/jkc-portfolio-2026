@@ -10,10 +10,10 @@ import {
   newEditToken,
   newMeta,
   newWorldId,
-  parseIfMatch,
+  parseVersion,
   sizeProblem,
   tokenMatches,
-  versionTag,
+  VERSION_HEADERS,
 } from './evently'
 
 describe('evently identifiers', () => {
@@ -69,19 +69,24 @@ describe('edit tokens', () => {
 })
 
 describe('versions', () => {
-  it('round-trips a version through its entity tag', () => {
-    expect(parseIfMatch(versionTag(0))).toBe(0)
-    expect(parseIfMatch(versionTag(42))).toBe(42)
+  it('reads a plain non-negative integer', () => {
+    expect(parseVersion('0')).toBe(0)
+    expect(parseVersion(' 42 ')).toBe(42)
   })
 
-  it('refuses anything that is not one exact strong tag', () => {
-    // A write with no usable precondition is refused, not treated as unconditional.
-    expect(parseIfMatch(undefined)).toBeNull()
-    expect(parseIfMatch('*')).toBeNull()
-    expect(parseIfMatch('W/"3"')).toBeNull()
-    expect(parseIfMatch('3')).toBeNull()
-    expect(parseIfMatch('"3", "4"')).toBeNull()
-    expect(parseIfMatch('"-1"')).toBeNull()
+  it('refuses anything else, so a write with no usable base version is never unconditional', () => {
+    for (const bad of [undefined, null, '', '*', '"3"', 'W/"3"', '3, 4', '-1', '1.5', '1e3', '9999999999']) {
+      expect(parseVersion(bad)).toBeNull()
+    }
+  })
+
+  it('uses headers the CDN has no meaning for', () => {
+    // Netlify's edge consumed If-Match before the function saw it. Any standard
+    // conditional header here would reintroduce that.
+    for (const name of Object.values(VERSION_HEADERS)) {
+      expect(name.startsWith('x-evently-')).toBe(true)
+      expect(['etag', 'if-match', 'if-none-match']).not.toContain(name)
+    }
   })
 })
 

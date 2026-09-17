@@ -310,7 +310,7 @@ design in `Personal/Evently/SPEC.md` section 18.
 The server half is here:
 
 ```
-server/utils/evently.ts         ← ids, token hashing, If-Match parsing, size rules (unit-tested)
+server/utils/evently.ts         ← ids, token hashing, version headers, size rules (unit-tested)
 server/utils/evently-store.ts   ← storage access and request guards
 server/api/evently/worlds/      ← POST reserve · GET/PUT/DELETE a world · GET/PUT/DELETE a photo
 ```
