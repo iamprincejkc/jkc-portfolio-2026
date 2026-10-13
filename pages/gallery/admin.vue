@@ -9,9 +9,13 @@ useHead({
 })
 
 const { data, refresh } = useGalleryPhotos()
+const { data: vault, refresh: refreshVault } = useGalleryVault()
 
 const photos = computed(() => data.value?.photos ?? [])
 const hiddenCount = computed(() => photos.value.filter((photo) => !isVisible(photo)).length)
+
+const vaultReady = computed(() => vault.value?.configured === true)
+const vaultItems = computed(() => vault.value?.items ?? [])
 
 /*
  * Upload and manage were stacked, so reaching the library meant scrolling past
@@ -21,6 +25,7 @@ const tab = ref<'upload' | 'manage'>('upload')
 
 function afterUpload() {
   refresh()
+  refreshVault()
   // Land on the library so the result of the upload is visible.
   tab.value = 'manage'
 }
@@ -53,7 +58,7 @@ function afterUpload() {
             @click="tab = 'manage'"
           >
             Library
-            <sup class="ml-1 tabular-nums opacity-60">{{ photos.length }}</sup>
+            <sup class="ml-1 tabular-nums opacity-60">{{ photos.length + vaultItems.length }}</sup>
           </button>
         </div>
 
@@ -64,10 +69,23 @@ function afterUpload() {
     </div>
 
     <div v-show="tab === 'upload'" class="pt-6">
-      <GalleryUploader @uploaded="afterUpload" />
+      <GalleryUploader :vault-ready="vaultReady" @uploaded="afterUpload" />
     </div>
 
     <div v-show="tab === 'manage'" class="pt-6">
+      <!-- Private originals on R2, listed first: they are only reachable here. -->
+      <section v-if="vaultReady" class="mb-12">
+        <p class="eyebrow">
+          Private videos · originals
+          <sup class="ml-1 tabular-nums opacity-60">{{ vaultItems.length }}</sup>
+        </p>
+        <GalleryVault :items="vaultItems" @deleted="refreshVault()" />
+      </section>
+
+      <p v-if="vaultReady" class="eyebrow">
+        Gallery
+        <sup class="ml-1 tabular-nums opacity-60">{{ photos.length }}</sup>
+      </p>
       <GalleryManager :photos="photos" @deleted="refresh()" />
     </div>
   </div>

@@ -1,6 +1,7 @@
 import type { Category, Photo } from '../server/utils/cloudinary'
+import type { SignedVaultItem, VaultPayload } from '../server/utils/r2'
 
-export type { Category, Photo }
+export type { Category, Photo, SignedVaultItem, VaultPayload }
 
 export type GalleryPayload = {
   configured: boolean
@@ -17,6 +18,17 @@ export function useGalleryPhotos() {
   return useFetch<GalleryPayload>('/api/gallery/photos', {
     key: 'gallery-photos',
     default: () => ({ configured: false, photos: [], categories: [] }),
+  })
+}
+
+/**
+ * The private video vault on R2. Admin-only - the endpoint sits behind the
+ * admin gate, and its playback links are signed per request.
+ */
+export function useGalleryVault() {
+  return useFetch<VaultPayload>('/api/gallery/admin/vault', {
+    key: 'gallery-vault',
+    default: () => ({ configured: false, items: [] }),
   })
 }
 

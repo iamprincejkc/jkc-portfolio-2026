@@ -1,5 +1,6 @@
 import { ConfigError, createUploadTicket } from '../../../utils/cloudinary'
 import { consume } from '../../../utils/rate-limit'
+import { readUploadMeta } from '../../../utils/upload-meta'
 
 /**
  * Mints a signed Cloudinary upload ticket.
@@ -12,8 +13,6 @@ import { consume } from '../../../utils/rate-limit'
 const MAX_TICKETS = 60
 const WINDOW_SECONDS = 60
 
-const TAG_PATTERN = /^[a-z0-9 _-]+$/i
-
 export default defineEventHandler(async (event) => {
   const limit = consume('sign-upload', MAX_TICKETS, WINDOW_SECONDS)
   if (!limit.ok) {
@@ -22,53 +21,14 @@ export default defineEventHandler(async (event) => {
   }
 
   const body = await readBody<Record<string, unknown>>(event)
-
-  const text = (value: unknown, max: number): string =>
-    typeof value === 'string' ? value.trim().slice(0, max) : ''
-
-  const year = text(body?.year, 4)
-  if (year && !/^\d{4}$/.test(year)) {
-    throw createError({ statusCode: 400, statusMessage: 'Year must be four digits.' })
-  }
-
-  const color = text(body?.color, 7)
-  if (color && !/^#[0-9a-fA-F]{6}$/.test(color)) {
-    throw createError({ statusCode: 400, statusMessage: 'Colour must be #rrggbb.' })
-  }
-
-  const tags = Array.isArray(body?.tags)
-    ? body.tags
-        .filter((tag): tag is string => typeof tag === 'string')
-        .map((tag) => tag.trim().toLowerCase())
-        .filter(Boolean)
-        .slice(0, 8)
-    : []
-
-  for (const tag of tags) {
-    if (tag.length > 40 || !TAG_PATTERN.test(tag)) {
-      throw createError({
-        statusCode: 400,
-        statusMessage: `Invalid category "${tag}". Letters, numbers, spaces, - and _ only.`,
-      })
-    }
-  }
+  const { title, client, year, alt, color, tags } = readUploadMeta(body)
 
   // Whitelisted rather than trusted: this decides which Cloudinary endpoint
   // the ticket points at, so an unrecognised value must not fall through.
   const kind = body?.kind === 'video' ? 'video' : 'image'
 
   try {
-    return createUploadTicket(
-      {
-        title: text(body?.title, 120),
-        client: text(body?.client, 120),
-        year,
-        alt: text(body?.alt, 300),
-        color,
-      },
-      tags,
-      kind,
-    )
+    return createUploadTicket({ title, client, year, alt, color }, tags, kind)
   } catch (error) {
     if (error instanceof ConfigError) {
       throw createError({ statusCode: 503, statusMessage: error.message })
