@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  /*
+   * IBC Auto, from the two screenshots there are: the home page, scrolled
+   * quickly from the hero down to Trending Models, then the stock search page
+   * with its grid of cars for sale, scrolled through a row at a time. Nine
+   * seconds, started by adding .go to <body>.
+   */
+  html, body { margin: 0; height: 100%; background: #fff; overflow: hidden; }
+  img { position: absolute; top: 0; left: 50%; display: block; will-change: transform, opacity; }
+
+  /* Native size, so it stays sharp; the sides fall outside the frame. */
+  .home { transform: translate(-50%, 0); }
+  /* Exactly the frame width, so no card loses its price off the edge. */
+  .stock { width: 100vw; height: auto; opacity: 0; transform: translate(-50%, 0); }
+
+  .go .home { animation: home 9s cubic-bezier(.65, 0, .35, 1) forwards; }
+  .go .stock { animation: stock 9s cubic-bezier(.65, 0, .35, 1) forwards; }
+
+  @keyframes home {
+    0%, 6% { transform: translate(-50%, 0); }
+    28% { transform: translate(-50%, calc(100vh - 100%)); }
+    34% { transform: translate(-50%, calc(100vh - 100%)); opacity: 1; }
+    38%, 100% { transform: translate(-50%, calc(100vh - 100%)); opacity: 0; }
+  }
+  @keyframes stock {
+    0%, 32% { opacity: 0; transform: translate(-50%, 0) scale(1.03); }
+    38% { opacity: 1; transform: translate(-50%, 0) scale(1); }
+    46% { transform: translate(-50%, 0); }
+    68% { transform: translate(-50%, calc((100vh - 100%) * 0.55)); }
+    76% { transform: translate(-50%, calc((100vh - 100%) * 0.55)); }
+    94%, 100% { opacity: 1; transform: translate(-50%, calc(100vh - 100%)); }
+  }
+</style>
+</head>
+<body>
+<img class="home" src="/images/project-ibc.webp" alt="">
+<img class="stock" src="/images/project-ibc-stock.webp" alt="">
+</body>
+</html>

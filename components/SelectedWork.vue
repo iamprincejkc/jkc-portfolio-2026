@@ -1,402 +1,327 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref } from 'vue'
-
-interface Project {
-  slug: string
-  name: string
-  category: string
-  year: string
-  image: string
-  url: string
-  role: string
-}
-
-// JKC's real projects. `role` is honest about whether built/maintained/managed.
-const projects: Project[] = [
-  {
-    slug: 'ibc-auto',
-    name: 'IBC Auto',
-    category: 'Web Platform · Auto Marketplace',
-    year: '2024',
-    image: '/images/project-ibc.webp',
-    url: 'https://ibcauto.com/search',
-    role: 'Built · Maintained',
-  },
-  {
-    slug: 'gis',
-    name: 'Global Inspection Specialists',
-    category: 'Web Platform · Compliance',
-    year: '2024',
-    image: '/images/project-gis.webp',
-    url: 'https://globalinspectionspecialist.com/',
-    role: 'Built · Maintained',
-  },
-  {
-    slug: 'jet-logistics',
-    name: 'Jet Logistics',
-    category: 'Corporate Site · Logistics',
-    year: '2024',
-    image: '/images/project-jet.webp',
-    url: 'https://www.jetlogistics.co.jp/',
-    role: 'Maintained',
-  },
-  {
-    slug: 'jet-d2d',
-    name: 'Jet D2D Services',
-    category: 'Plugin Platform · Demo',
-    year: '2024',
-    image: '/images/project-jet.webp',
-    url: 'https://logged.jetlogistics.co.jp/en/services',
-    role: 'Built',
-  },
-  {
-    slug: 'hope-lifemark',
-    name: 'HOPE LifeMark-HX',
-    category: 'Enterprise EMR · Healthcare',
-    year: '2023',
-    image: '/images/project-hope.webp',
-    url: '#',
-    role: 'Contributed · Supported',
-  },
-  {
-    slug: 'rd-pawnshop',
-    name: 'RD Pawnshop System',
-    category: 'Internal Tools · .NET MVC',
-    year: '2022',
-    image: '/images/project-rdgcash.webp',
-    url: '#',
-    role: 'Built · Maintained',
-  },
-]
+import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { WORK, playhead } from '~/utils/work/reel'
 
 /**
- * Some work has no public URL - internal tooling, or a client product behind a
- * login. Those entries render as plain elements rather than links: an anchor
- * with href="#" and target="_blank" promises a destination, opens a blank tab,
- * and delivers nothing.
+ * Selected work, as a reel.
+ *
+ * It opens on a showreel in a small window that scrolling opens to the full
+ * screen. Then each project is a chapter: a full-height card with a recording
+ * of the project, which sticks while the next one slides over it - the
+ * screen straightening out of a tilt as it arrives, the one underneath sinking
+ * back into the dark. A player bar along the bottom shows which chapter is on,
+ * scrubs with the scroll, seeks on click, and pauses everything.
+ *
+ * Everything here is driven by the scroll position and one piece of geometry:
+ * where the chapters start and how far apart they are. The cards are equal
+ * heights with equal gaps, so chapter i reaches the top at `start + i * step`,
+ * and that is all the playback, the animations and the player bar need. It is
+ * computed rather than read off the cards because a stuck sticky element
+ * reports where it is stuck, not where it sits in the page.
  */
-function isLinked(project: Project): boolean {
-  return Boolean(project.url) && project.url !== '#'
+
+interface ChapterHandle {
+  root: HTMLElement | null
+  load: () => void
+  play: () => void
+  pause: () => void
+}
+interface ReelHandle {
+  root: HTMLElement | null
+  video: HTMLVideoElement | null
+  load: () => void
 }
 
-const sectionRef = ref<HTMLElement | null>(null)
-const previewRef = ref<HTMLElement | null>(null)
-const activeIndex = ref(0)
-const hovering = ref(false)
-const isDesktop = ref(false) // gated on mount
-const reducedMotion = ref(false)
+const reel = ref<ReelHandle | null>(null)
+const chaptersEl = ref<HTMLElement | null>(null)
+const chapters: ChapterHandle[] = []
 
-/*
- * The list used to be pinned with a ScrollTrigger running for
- * `projects.length * window.innerHeight` - six full viewport heights of
- * scrolling locked on one section before the page would move on. It looked
- * impressive once and was tedious every time after.
- *
- * It is now a plain index: every project readable at once, no scroll cost, and
- * a preview image that tracks the cursor so the work is still visible without
- * clicking through. A carousel was the other option but it hides five of six
- * projects behind interaction, which is worse for a portfolio.
- */
-let moveX: ((v: number) => void) | null = null
-let moveY: ((v: number) => void) | null = null
-let rafId = 0
+const index = ref(0)
+const within = ref(0)
+const seconds = ref(0)
+const hud = ref(false)
+const paused = ref(false)
+/** Reduced motion: nothing plays unasked, and each screen gets its own button. */
+const manual = ref(false)
 
-function onMove(event: MouseEvent) {
-  if (!previewRef.value) return
+const durations = WORK.map((w) => w.clip.duration)
+const n = WORK.length
 
-  // The preview trails the cursor slightly, which reads as physical rather
-  // than glued on. quickTo is GSAP's allocation-free setter for this.
-  if (moveX && moveY) {
-    moveX(event.clientX)
-    moveY(event.clientY)
-    return
+function setChapter(el: unknown, i: number) {
+  if (el) chapters[i] = el as ChapterHandle
+}
+
+let geo = { start: 0, step: 1, end: 0, reelTop: 0, reelEnd: 0 }
+const startOf = (i: number) => geo.start + i * geo.step
+const clamp01 = (v: number) => Math.min(1, Math.max(0, v))
+
+function measure() {
+  const box = chaptersEl.value
+  const first = chapters[0]?.root
+  const reelRoot = reel.value?.root
+  if (!box || !first || !reelRoot) return
+  const second = chapters[1]?.root
+  const dwell = second ? parseFloat(getComputedStyle(second).marginTop) || 0 : 0
+  const top = box.getBoundingClientRect().top + window.scrollY
+  const reelTop = reelRoot.getBoundingClientRect().top + window.scrollY
+  geo = {
+    start: top,
+    step: first.offsetHeight + dwell,
+    end: top + box.offsetHeight,
+    reelTop,
+    reelEnd: reelTop + reelRoot.offsetHeight,
+  }
+}
+
+/** Which clips should be running, so play() is only called on a change. */
+const running: boolean[] = []
+let reelRunning = false
+
+function update() {
+  if (manual.value) return
+  const y = window.scrollY
+  const vh = window.innerHeight
+
+  // Halfway up the screen is where a chapter counts as "on".
+  const ph = playhead((y - (geo.start - vh * 0.5)) / (n * geo.step), durations)
+  index.value = ph.index
+  within.value = ph.within
+  seconds.value = ph.seconds
+  // Out once the last chapter has mostly scrolled away.
+  hud.value = y > geo.start - vh * 0.6 && y < geo.end - vh * 0.3
+
+  const leaving = clamp01((geo.end - y) / vh)
+  for (let i = 0; i < n; i++) {
+    const c = chapters[i]
+    if (!c) continue
+    const entered = clamp01((y - (startOf(i) - vh)) / vh)
+    const covered = i + 1 < n ? clamp01((y - (startOf(i + 1) - vh)) / vh) : 0
+    const shown = Math.min(entered, 1 - covered, leaving)
+
+    // Fetch a clip about a screen before it arrives.
+    const near = !paused.value && y > startOf(i) - vh * 2 && y < geo.end
+    if (near) c.load()
+
+    const want = !paused.value && shown > 0.3
+    if (want !== !!running[i]) {
+      running[i] = want
+      want ? c.play() : c.pause()
+    }
   }
 
-  // No GSAP: position directly, throttled to one write per frame.
-  if (rafId) return
-  const { clientX, clientY } = event
-  rafId = requestAnimationFrame(() => {
-    rafId = 0
-    if (previewRef.value) {
-      previewRef.value.style.transform = `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%)`
+  const r = reel.value
+  if (r?.video) {
+    if (!paused.value && y > geo.reelTop - vh * 2) r.load()
+    const want = !paused.value && y > geo.reelTop - vh * 0.6 && y < geo.reelEnd - vh * 0.35
+    if (want !== reelRunning) {
+      reelRunning = want
+      want ? r.video.play().catch(() => (reelRunning = false)) : r.video.pause()
+    }
+  }
+}
+
+function toggle() {
+  paused.value = !paused.value
+  update()
+}
+
+function seek(i: number) {
+  const top = startOf(i) + 2
+  const { $lenis } = useNuxtApp() as { $lenis?: { scrollTo: (y: number, o?: object) => void } }
+  if ($lenis) $lenis.scrollTo(top, { duration: 1.4 })
+  else window.scrollTo({ top, behavior: 'smooth' })
+}
+
+let mm: { revert: () => void } | null = null
+let tracker: { kill: () => void } | null = null
+let onRefreshInit: (() => void) | null = null
+
+onMounted(() => {
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  if (reduced) {
+    manual.value = true
+    return
+  }
+  // Save-Data: the motion stays, but nothing downloads until play is pressed.
+  const conn = (navigator as { connection?: { saveData?: boolean } }).connection
+  if (conn?.saveData) paused.value = true
+
+  const { $gsap, $ScrollTrigger } = useNuxtApp() as any
+  measure()
+
+  if ($gsap && $ScrollTrigger) {
+    onRefreshInit = measure
+    $ScrollTrigger.addEventListener('refreshInit', onRefreshInit)
+    mm = $gsap.matchMedia()
+    ;(mm as any).add(
+      { wide: '(min-width: 768px)', motion: '(prefers-reduced-motion: no-preference)' },
+      (ctx: { conditions: { wide: boolean; motion: boolean } }) => {
+        if (!ctx.conditions.motion) return
+        animate($gsap, ctx.conditions.wide)
+      },
+    )
+    // One trigger spanning the page: every scroll, wherever it lands.
+    tracker = $ScrollTrigger.create({ start: 0, end: 'max', onUpdate: update, onRefresh: update })
+  } else {
+    window.addEventListener('scroll', update, { passive: true })
+  }
+  update()
+})
+
+function animate(gsap: any, wide: boolean) {
+  const root = reel.value?.root
+  if (root) {
+    const q = (sel: string) => root.querySelector(sel)
+    gsap
+      .timeline({ scrollTrigger: { trigger: root, start: 'top top', end: 'bottom bottom', scrub: 0.6 } })
+      .fromTo(
+        q('[data-reel-window]'),
+        { clipPath: wide ? 'inset(31% 34% 31% 34% round 24px)' : 'inset(36% 8% 36% 8% round 18px)' },
+        { clipPath: 'inset(0% 0% 0% 0% round 0px)', ease: 'none', duration: 0.7 },
+        0,
+      )
+      .fromTo(q('[data-reel-video]'), { scale: 1.2 }, { scale: 1, ease: 'none', duration: 0.7 }, 0)
+      .to(q('[data-reel-a]'), { ...(wide ? { xPercent: -70 } : { yPercent: -140 }), opacity: 0, ease: 'none', duration: 0.45 }, 0)
+      .to(q('[data-reel-b]'), { ...(wide ? { xPercent: 70 } : { yPercent: 140 }), opacity: 0, ease: 'none', duration: 0.45 }, 0)
+      .to(q('[data-reel-hint]'), { opacity: 0, ease: 'none', duration: 0.12 }, 0)
+      .fromTo(q('[data-reel-caption]'), { opacity: 0, y: 40 }, { opacity: 1, y: 0, ease: 'none', duration: 0.18 }, 0.72)
+      .to({}, { duration: 0.1 })
+  }
+
+  chapters.forEach((c, i) => {
+    const el = c?.root
+    if (!el) return
+    const screen = el.querySelector('[data-chapter-screen]')?.firstElementChild
+    const vh = () => window.innerHeight
+
+    // Arriving: the screen stands up out of a tilt and the copy rises in.
+    gsap
+      .timeline({ scrollTrigger: { start: () => startOf(i) - vh(), end: () => startOf(i), scrub: 0.5 } })
+      .fromTo(
+        screen,
+        { rotateX: 20, yPercent: 16, scale: 0.86, transformOrigin: '50% 100%' },
+        { rotateX: 0, yPercent: 0, scale: 1, ease: 'power2.out' },
+        0,
+      )
+      .fromTo(
+        el.querySelectorAll('[data-chapter-reveal]'),
+        { y: 48, opacity: 0 },
+        { y: 0, opacity: 1, stagger: 0.07, ease: 'power2.out', duration: 0.6 },
+        0.25,
+      )
+      .fromTo(el.querySelector('[data-chapter-number]'), { yPercent: 35 }, { yPercent: 0, ease: 'none' }, 0)
+
+    // Covered: sink back and darken as the next chapter slides over.
+    if (i < n - 1) {
+      gsap
+        .timeline({ scrollTrigger: { start: () => startOf(i + 1) - vh(), end: () => startOf(i + 1), scrub: true } })
+        .to(el.querySelector('[data-chapter-inner]'), { scale: wide ? 0.92 : 0.95, yPercent: -2, ease: 'none' }, 0)
+        .to(el.querySelector('[data-chapter-shade]'), { opacity: 0.72, ease: 'none' }, 0)
     }
   })
 }
 
-function enter(index: number) {
-  activeIndex.value = index
-  hovering.value = true
-}
-
-function leave() {
-  hovering.value = false
-}
-
-onMounted(() => {
-  /*
-   * Both layouts are server-rendered and swapped by CSS (`hidden lg:block` /
-   * `lg:hidden`), so neither flashes on hydration and the list still works
-   * without JavaScript. This flag only decides whether to spend anything
-   * wiring up the cursor tracking.
-   */
-  isDesktop.value = window.matchMedia('(min-width: 1024px)').matches
-  reducedMotion.value = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  if (!isDesktop.value || !previewRef.value) return
-
-  const { $gsap } = useNuxtApp() as any
-  if (!$gsap || reducedMotion.value) return
-
-  moveX = $gsap.quickTo(previewRef.value, 'x', { duration: 0.5, ease: 'expo.out' })
-  moveY = $gsap.quickTo(previewRef.value, 'y', { duration: 0.5, ease: 'expo.out' })
-})
-
 onBeforeUnmount(() => {
-  if (rafId) cancelAnimationFrame(rafId)
-  moveX = null
-  moveY = null
+  const { $ScrollTrigger } = useNuxtApp() as any
+  if (onRefreshInit) $ScrollTrigger?.removeEventListener('refreshInit', onRefreshInit)
+  tracker?.kill()
+  mm?.revert()
+  window.removeEventListener('scroll', update)
 })
 </script>
 
 <template>
-  <section ref="sectionRef" id="work" class="relative bg-bg">
-    <!-- ============================================================
-         DESKTOP: index list with a cursor-tracked preview.
-         No pinning - the section is one screen and scrolls like everything else.
-         ============================================================ -->
-    <div class="hidden lg:block container-edge py-28">
-      <div class="flex items-end justify-between">
-        <div>
-          <p class="eyebrow mb-3">Selected work ({{ projects.length }})</p>
-          <h2 class="font-display headline-lg">Things I&apos;ve worked on</h2>
-        </div>
-        <a
-          href="#contact"
-          class="inline-flex items-center gap-2 text-sm border border-border-muted rounded-full px-5 py-2 hover:bg-primary hover:text-text-inverse transition-colors duration-normal"
-        >
-          Start a project <span aria-hidden>→</span>
-        </a>
-      </div>
+  <section id="work" class="work" aria-labelledby="work-heading">
+    <WorkReelIntro ref="reel" />
 
-      <ul
-        class="mt-16 border-t border-border-muted"
-        @mousemove="onMove"
-        @mouseleave="leave"
-      >
-        <li v-for="(p, i) in projects" :key="p.slug">
-          <component
-            :is="isLinked(p) ? 'a' : 'div'"
-            v-bind="
-              isLinked(p)
-                ? { href: p.url, target: '_blank', rel: 'noopener noreferrer' }
-                : {}
-            "
-            class="work-row project-row"
-            :class="{
-              'is-dimmed': hovering && activeIndex !== i,
-              'cursor-default': !isLinked(p),
-            }"
-            @mouseenter="enter(i)"
-            @focus="enter(i)"
-            @blur="leave"
-          >
-            <span class="work-row__index eyebrow">{{ String(i + 1).padStart(2, '0') }}</span>
-
-            <span class="font-display text-3xl xl:text-4xl">
-              {{ p.name }}
-              <span v-if="isLinked(p)" class="project-row__arrow">↗</span>
-              <span
-                v-else
-                class="ml-2 align-middle text-xs tracking-widest uppercase opacity-60"
-              >
-                Internal
-              </span>
-            </span>
-
-            <span class="text-sm self-center text-text-muted">{{ p.category }}</span>
-            <span class="text-sm self-center tabular-nums text-text-muted">
-              {{ p.role }} · {{ p.year }}
-            </span>
-          </component>
-        </li>
-      </ul>
-
-      <!--
-        Every preview is mounted and swapped by opacity, so hovering never waits
-        on a network request. Decorative: the list text already names each one.
-      -->
-      <div
-        ref="previewRef"
-        class="work-preview"
-        :class="{ 'is-visible': hovering, 'is-static': reducedMotion }"
-        aria-hidden="true"
-      >
-        <img
-          v-for="(p, i) in projects"
-          :key="p.slug"
-          :src="p.image"
-          alt=""
-          loading="lazy"
-          decoding="async"
-          :class="{ 'is-active': activeIndex === i }"
-        />
-      </div>
+    <div ref="chaptersEl" class="work__chapters">
+      <WorkChapter
+        v-for="(w, i) in WORK"
+        :key="w.slug"
+        :ref="(el) => setChapter(el, i)"
+        :work="w"
+        :index="i"
+        :total="WORK.length"
+        :manual="manual"
+      />
     </div>
 
-    <!-- ============================================================
-         MOBILE: simple stacked layout, no pinning, no scrub
-         ============================================================ -->
-    <div class="lg:hidden container-edge py-20">
-      <div class="mb-10">
-        <p class="eyebrow mb-3">Selected work ({{ projects.length }})</p>
-        <h2 class="font-display text-4xl leading-tight">Things I&apos;ve worked on</h2>
-      </div>
-
-      <ul class="space-y-12">
-        <li v-for="p in projects" :key="p.slug">
-          <component
-            :is="isLinked(p) ? 'a' : 'div'"
-            v-bind="
-              isLinked(p) ? { href: p.url, target: '_blank', rel: 'noopener noreferrer' } : {}
-            "
-            class="block group"
-          >
-            <div class="overflow-hidden rounded-xs mb-4">
-              <!--
-                Every value in `sizes` needs its breakpoint. An unprefixed
-                `100vw` made @nuxt/image emit `1w` and `2w` candidates - one-
-                and two-pixel images - in every srcset it wrote.
-              -->
-              <NuxtImg
-                :src="p.image"
-                :alt="p.name"
-                class="w-full h-auto group-hover:scale-[1.02] transition-transform duration-slow"
-                loading="lazy"
-                sizes="xs:100vw sm:640px"
-              />
-            </div>
-            <div class="flex items-end justify-between gap-4">
-              <div>
-                <h3 class="font-display text-2xl italic">
-                  {{ p.name }}
-                  <span v-if="isLinked(p)" class="text-accent">↗</span>
-                </h3>
-                <p class="text-sm text-text-muted mt-1">
-                  {{ p.category }}<template v-if="!isLinked(p)"> · Internal</template>
-                </p>
-              </div>
-              <p class="text-xs text-text-muted tabular-nums whitespace-nowrap">
-                {{ p.role }}<br />{{ p.year }}
-              </p>
-            </div>
-          </component>
-        </li>
-      </ul>
+    <div class="container-edge work__outro">
+      <p class="eyebrow">End of reel</p>
+      <p class="font-display work__outro-line">Got something worth filming?</p>
+      <a href="#contact" class="work__outro-cta">Start a project <span aria-hidden="true">→</span></a>
     </div>
+
+    <WorkTimeline
+      :work="WORK"
+      :index="index"
+      :within="within"
+      :seconds="seconds"
+      :visible="hud"
+      :paused="paused"
+      @seek="seek"
+      @toggle="toggle"
+    />
   </section>
 </template>
 
 <style scoped>
-/*
- * The shared .project-row is a 3-column grid; this row adds a leading index,
- * so the template is restated here rather than fighting it with overrides.
- */
-/* Doubled selector: .project-row is global and equally specific, and source
-   order between global CSS and scoped component CSS is not guaranteed. */
-.work-row.project-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto auto;
-  gap: 2.5rem;
-  align-items: baseline;
-  padding: 1.75rem 0;
-  transition:
-    padding-left 0.5s var(--ease-out-expo),
-    opacity 0.4s var(--ease-out-expo),
-    color 0.3s var(--ease-out-expo);
+.work {
+  position: relative;
+  background: var(--color-bg);
 }
 
-/* The shared row assumes everything is a link. These two are not. */
-.work-row.cursor-default {
-  cursor: default;
+.work__chapters {
+  /* How long each chapter holds alone at the top before the next arrives. */
+  --work-dwell: 35vh;
+  position: relative;
 }
 
-.work-row__index {
-  align-self: center;
-  color: var(--color-muted);
-  transition: color 0.3s var(--ease-out-expo);
-}
-
-.work-row:hover .work-row__index {
-  color: var(--color-accent);
-}
-
-/*
- * Dim the rows that are not hovered rather than highlighting the one that is.
- * Focus lands on the row being read instead of asking the eye to find it.
- */
-.work-row.is-dimmed {
-  opacity: 0.35;
-}
-
-/* ---- Cursor-tracked preview ---- */
-.work-preview {
-  position: fixed;
-  top: 0;
-  left: 0;
-  z-index: 20;
-  width: clamp(260px, 22vw, 380px);
-  aspect-ratio: 4 / 3;
-  /* GSAP writes x/y; this keeps the image centred on the cursor. */
-  margin: -0.5px 0 0 -0.5px;
-  translate: -50% -50%;
-  pointer-events: none;
-  opacity: 0;
-  scale: 0.92;
-  transition:
-    opacity 0.4s var(--ease-out-expo),
-    scale 0.5s var(--ease-out-expo);
-  will-change: transform;
-}
-
-.work-preview.is-visible {
-  opacity: 1;
-  scale: 1;
-}
-
-.work-preview img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  border-radius: 2px;
-  opacity: 0;
-  transition: opacity 0.35s var(--ease-out-expo);
-}
-
-.work-preview img.is-active {
-  opacity: 1;
-}
-
-/*
- * Reduced motion: the preview stops chasing the pointer and parks in the
- * lower-right corner, so the information is still there without the movement.
- */
-.work-preview.is-static {
-  top: auto;
-  left: auto;
-  right: 3rem;
-  bottom: 3rem;
-  translate: none;
-  transition: opacity 0.2s linear;
-  scale: 1;
+@media (max-width: 1023px) {
+  .work__chapters {
+    --work-dwell: 18vh;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .work-row {
-    transition: opacity 0.2s linear;
+  .work__chapters {
+    --work-dwell: 0px;
   }
-  .work-row:hover {
-    padding-left: 0;
+}
+
+.work__outro {
+  display: grid;
+  justify-items: center;
+  gap: 1.25rem;
+  padding-block: 5rem 8rem;
+  text-align: center;
+}
+
+@media (max-width: 767px) {
+  .work__outro {
+    padding-block: 3.5rem 6rem;
   }
+}
+
+.work__outro-line {
+  font-size: clamp(2.25rem, 5vw, 4.5rem);
+  line-height: 1;
+}
+
+.work__outro-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: 1px solid var(--color-border, rgba(118, 118, 118, 0.35));
+  border-radius: 9999px;
+  font-size: 15px;
+  transition:
+    background-color 0.3s var(--ease-out-expo),
+    color 0.3s var(--ease-out-expo);
+}
+.work__outro-cta:hover {
+  background: var(--color-fg);
+  color: var(--color-bg);
 }
 </style>

@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; background: #f4f4f4; font-family: system-ui, sans-serif; }
+  body { display: grid; place-items: center; }
+  #open-3qv { padding: 14px 28px; border: 0; border-radius: 6px; background: #f78a1c; color: #fff; font-size: 16px; cursor: pointer; }
+</style>
+<script src="qv3.js"></script>
+</head>
+<body>
+<button id="open-3qv" type="button">View 3QV photos</button>
+<script>
+  // The new 3QV build, pointed at the recorder's own stand-in API, which
+  // answers with Jet's public photos of one C-HR. No key is involved.
+  const el = document.createElement('widget-3qv')
+  el.id = 'qv3-widget-viewer'
+  el.setAttribute('data-trigger-id', 'open-3qv')
+  el.setAttribute('data-api-base-url', location.origin)
+  el.setAttribute('data-chassis-no', 'ZYX10-2192564')
+  document.body.appendChild(el)
+</script>
+</body>
+</html>

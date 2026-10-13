@@ -41,6 +41,17 @@ describe('content security policy', () => {
     expect(middlewarePolicy()).toBe(tomlPolicy())
   })
 
+  // Written twice too. The work reel needs `autoplay=(self)`: with `autoplay=()`
+  // the muted project recordings are refused and only ever show their posters.
+  it('has the same permissions policy in both places, allowing same-origin autoplay', () => {
+    const toml = /Permissions-Policy = "([^"]+)"/.exec(readFileSync(resolve(root, 'netlify.toml'), 'utf8'))?.[1]
+    const source = readFileSync(resolve(root, 'server/middleware/security-headers.ts'), 'utf8')
+    const block = /'permissions-policy': \[([\s\S]*?)\]\.join\(', '\)/.exec(source)?.[1] ?? ''
+    const middleware = [...block.matchAll(/^\s*'([^']+)',\s*$/gm)].map((m) => m[1]).join(', ')
+    expect(middleware).toBe(toml)
+    expect(toml?.split(', ')).toContain('autoplay=(self)')
+  })
+
   it('allows exactly the relays the deployed Evently bundle connects to', () => {
     // The built bundle, not Evently's source: it is what this site actually serves.
     const assets = resolve(root, 'public/evently/assets')

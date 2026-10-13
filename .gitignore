@@ -10,3 +10,6 @@ dist
 
 # Superseded by server/routes/robots.txt.ts (pending manual delete)
 public/robots.txt.replaced-by-server-route
+
+# Frames left by scripts/record-work.mjs
+.recordings

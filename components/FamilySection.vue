@@ -18,8 +18,8 @@ const children = [
       <div class="max-w-2xl mb-16">
         <p class="eyebrow mb-3">Family</p>
         <h2 class="font-display text-3xl md:text-4xl leading-tight">
-          The people behind the<br />
-          <span class="italic text-accent">person behind the code.</span>
+          My parents<br />
+          <span class="italic text-accent">and siblings.</span>
         </h2>
       </div>
 
