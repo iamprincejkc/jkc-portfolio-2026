@@ -3,8 +3,10 @@
  * The long version.
  *
  * The home page carries a three-line summary and a link here; this page is
- * where the rest of it lives - how the five years actually went, what I reach
- * for and why, and the people it is all for.
+ * where the rest of it lives - where I have worked, what I bring, and family.
+ *
+ * Written to be read by a recruiter in under a minute: real titles, dates and
+ * project names, plain sentences, and nothing the CV would contradict.
  *
  * Splitting it this way is the point. A home page has to answer "can this
  * person build the thing" in about a screen; a biography does not fit inside
@@ -14,7 +16,7 @@ const config = useRuntimeConfig()
 const siteUrl = String(config.public.siteUrl ?? '').replace(/\/$/, '')
 
 const DESCRIPTION =
-  'Jan Kevin Cadampog — a full-stack developer in Cebu City. Five years of .NET and Angular, what I have shipped, how I like to work, and the people behind it.'
+  'Jan Kevin Cadampog is a full-stack .NET and Angular developer in Cebu City, Philippines, with five years across RD Pawnshop, Fujitsu and OSL International.'
 
 useHead({ title: 'About — Jan Kevin Cadampog' })
 
@@ -27,19 +29,23 @@ useSeoMeta({
   twitterDescription: DESCRIPTION,
 })
 
-/** What I actually do all day, rather than a list of technologies. */
+/**
+ * What a hiring manager is checking for, each backed by something on the
+ * record: a role, a project, or the stack the skills section lists. Keep it
+ * that way - a claim here should be one the work or the CV can show.
+ */
 const principles = [
   {
-    title: 'Enterprise systems, not demos',
-    body: 'Most of my work runs inside companies rather than on a landing page — pawnshop ledgers, healthcare records, compliance tooling. Software people are obliged to use, where a bug is somebody\'s afternoon.',
+    title: 'Systems businesses run on',
+    body: 'Most of my work is on software that companies use every day: internal tools for a pawnshop chain, a hospital records system, and vehicle export platforms for Japanese clients. I am used to large codebases that already have users, and to changing them carefully.',
   },
   {
-    title: 'The boring parts are the job',
-    body: 'Change requests, production support, the ticket nobody wants at 5pm on a Friday. Five years of that teaches you more about how systems really fail than any greenfield rebuild.',
+    title: 'Production support',
+    body: 'At Fujitsu I developed and tested features for each release, handled production support and change requests, and delivered critical work on my own timelines.',
   },
   {
-    title: 'Build the small thing properly',
-    body: 'The tools on this site — a QR generator with hand-written vector exporters, a searchable index of two thousand n8n workflows, a directory of every public API worth knowing — exist because I wanted to find out how. They are the honest version of a side project: finished, and out where people can use them.',
+    title: 'Front end to database',
+    body: '.NET and C# on the server, Angular and TypeScript in the browser, SQL Server and MongoDB for data. I can take a feature from the database to the screen without handing it off.',
   },
 ]
 </script>
@@ -50,32 +56,30 @@ const principles = [
       <div class="container-edge">
         <p class="eyebrow mb-6">About</p>
         <!--
-          No hard <br /> in the first clause. At around 1290px it broke as
-          "Five years of building / things", leaving a one-word orphan line
-          above the accent. `text-wrap: balance` splits it evenly instead and
-          keeps doing so at every width; the accent phrase is a block so it
-          always starts its own line regardless.
+          No hard <br /> inside either line: `text-wrap: balance` splits them
+          evenly at every width, and the accent phrase is a block so it always
+          starts its own line.
         -->
         <h1 class="about-hero__title font-display headline-lg leading-[1.05] max-w-4xl">
-          <span class="block">Five years of building things</span>
-          <span class="block italic text-accent">people have to use.</span>
+          <span class="block">I build web apps</span>
+          <span class="block italic text-accent">with .NET and Angular.</span>
         </h1>
 
         <div class="about-lede">
           <p>
-            I&rsquo;m Jan Kevin Cadampog — most people just say JKC. I build full-stack web applications from Cebu
-            City, currently as a Software Engineer at OSL International, working across .NET on the back and Angular
-            on the front.
+            I&rsquo;m Jan Kevin Cadampog, or JKC. I&rsquo;m a full-stack developer in Cebu City, Philippines, and a
+            Software Engineer at OSL International, where I build and maintain web platforms for companies in Japan,
+            including IBC Auto and Jet Logistics. I work on both sides: the .NET APIs and the Angular front ends.
           </p>
           <p>
-            I started in 2021 writing .NET MVC against SQL Server for a pawnshop chain, spent two years at Fujitsu on
-            enterprise healthcare systems where the software had to be right because clinicians were depending on it,
-            and now build web apps end to end — the API, the UI, and the integration work in between.
+            I started in 2021 as a programmer at RD Pawnshop, building .NET MVC applications on SQL Server. From 2023
+            to 2025 I was an Application System Engineer at Fujitsu, working on HOPE LifeMark-HX, an electronic
+            medical record system for hospitals. I joined OSL International in 2025.
           </p>
           <p>
-            What I keep coming back to is the unglamorous middle of software: the systems already in production, the
-            ones with real users and real history, where the interesting problem is usually not the feature but
-            everything it has to survive.
+            I also built 360&deg;FS and 3QV, the 360&deg; viewer and photo carousel plugins made for Jet Logistics and
+            IBC Auto. In my own time I make the tools on this site: a QR code generator, a searchable library of n8n
+            workflows, and a directory of public APIs.
           </p>
         </div>
       </div>
@@ -83,7 +87,7 @@ const principles = [
 
     <section class="about-principles">
       <div class="container-edge">
-        <p class="eyebrow mb-12">How I work</p>
+        <p class="eyebrow mb-12">What I bring</p>
         <div class="about-principles__grid">
           <article v-for="item in principles" :key="item.title">
             <h2>{{ item.title }}</h2>
@@ -94,18 +98,16 @@ const principles = [
     </section>
 
     <!--
-      Moved here from the home page. It sat between Experience and Tech Stack,
-      which is the exact stretch someone scanning for whether to hire me reads
-      - so it interrupted the one job that page has. Here it is the point
-      rather than an interruption.
+      Moved here from the home page, where it sat between Experience and Tech
+      Stack - the stretch someone deciding whether to hire me actually reads.
     -->
     <FamilySection />
 
     <section class="about-outro">
       <div class="container-edge">
         <h2 class="font-display text-3xl md:text-4xl leading-tight max-w-2xl">
-          That&rsquo;s the long version.<br />
-          <span class="italic text-accent">Here&rsquo;s the work.</span>
+          See the projects,<br />
+          <span class="italic text-accent">or get in touch.</span>
         </h2>
         <div class="about-outro__links">
           <NuxtLink to="/#work" class="about-link">

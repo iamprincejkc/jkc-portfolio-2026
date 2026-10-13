@@ -89,7 +89,8 @@ const HEADERS: Record<string, string> = {
    */
   'permissions-policy': [
     'accelerometer=()',
-    'autoplay=()',
+    // The work reel plays muted recordings of each project as they scroll in.
+    'autoplay=(self)',
     'camera=()',
     'display-capture=()',
     'encrypted-media=()',

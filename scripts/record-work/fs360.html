@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>html, body { margin: 0; height: 100%; background: #f4f4f4; }</style>
+<script src="fs360.js"></script>
+</head>
+<body>
+<script>
+  ;(() => {
+    // The plugin's own demo car (TEST001). The element is created during
+    // parsing, as the plugin expects; every frame and the interior are fetched
+    // before the modal opens, so switching views on camera never waits.
+    const el = document.createElement('ibcauto-360')
+    el.id = '360-viewer'
+    el.setAttribute('data-chassis-no', 'TEST001')
+    document.body.appendChild(el)
+
+    const base = 'https://images.jetlogistics.co.jp/2025/07/16/'
+    const urls = Array.from({ length: 144 }, (_, i) => `${base}360/1015380/webp/${String(i + 1).padStart(3, '0')}.jpeg.webp`)
+    urls.push(`${base}1015380_interior.jpg`)
+    Promise.all(urls.map(u => new Promise(done => { const i = new Image(); i.onload = i.onerror = done; i.src = u })))
+      .then(() => el.showModal())
+  })()
+</script>
+</body>
+</html>
