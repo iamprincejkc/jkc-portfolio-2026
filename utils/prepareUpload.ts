@@ -1,25 +1,25 @@
 /**
- * Downscale oversized photos in the browser before they are uploaded.
+ * Downscale a photo in the browser only when Cloudinary would refuse it.
  *
- * Cloudinary's free tier rejects images over 10MB, and a modern phone or
- * mirrorless camera clears that easily. Worse, the rejection arrives *after*
- * the whole file has been uploaded, so a 15MB photo costs a long wait and then
- * fails.
+ * Photos are uploaded as originals - the file that left the camera is the one
+ * that is kept, and Cloudinary still resizes on delivery, so the gallery loses
+ * nothing by storing the full thing.
  *
- * Downscaling is not just a workaround for that limit. The gallery never
- * serves an image wider than 2560px, so anything above that is bytes nobody
- * will ever see - paid for on upload, on storage, and on every transformation.
+ * The exception is Cloudinary's free-tier cap of 10MB, which a mirrorless
+ * camera or a phone's RAW mode clears easily. It rejects *after* the whole
+ * file has been uploaded, so an oversized photo is downscaled here instead of
+ * costing a long wait and then failing.
  *
  * HEIC cannot be decoded by canvas in Chrome or Firefox, so those files are
  * passed through untouched and rely on the size check instead. They are
  * typically 2-4MB, well inside the limit.
  */
 
-/** The widest source the gallery ever serves. */
+/** The widest source the gallery ever serves, so the most a downscale keeps. */
 const MAX_EDGE = 2560
 
-/** Below this, re-encoding usually costs more quality than it saves bytes. */
-const SKIP_BELOW_BYTES = 2 * 1024 * 1024
+/** Cloudinary's free-tier image cap. Anything within it goes up untouched. */
+const KEEP_ORIGINAL_UP_TO_BYTES = 10 * 1024 * 1024
 
 const QUALITY = 0.85
 
@@ -46,7 +46,7 @@ export type PrepareResult = {
 export async function prepareImageForUpload(file: File): Promise<PrepareResult> {
   const original = { file, changed: false, originalBytes: file.size }
 
-  if (file.size <= SKIP_BELOW_BYTES) return original
+  if (file.size <= KEEP_ORIGINAL_UP_TO_BYTES) return original
 
   try {
     const bitmap = await createImageBitmap(file)

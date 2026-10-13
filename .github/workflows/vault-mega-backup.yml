@@ -1,0 +1,80 @@
+# Second copy of the R2 video vault, on MEGA.
+#
+# Runs daily and on demand (Actions -> Vault backup to MEGA -> Run workflow).
+# Copies only what MEGA does not already have; see scripts/vault-mega-backup.sh.
+#
+# Needs these repository secrets (Settings -> Secrets and variables -> Actions):
+#
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+#     The same values as the Netlify NUXT_R2_* variables. A read-only R2 token
+#     is enough here and is the better choice.
+#
+#   MEGA_EMAIL, MEGA_PASSWORD
+#     Use a MEGA account made only for this backup, not your personal one:
+#     these secrets unlock the whole account.
+#
+#   MEGA_TOTP_SECRET (optional)
+#     Only if that account has two-factor login: the base32 secret shown when
+#     setting it up (the text behind the QR code).
+#
+# Until the secrets exist, the job skips itself rather than failing.
+#
+# GitHub pauses scheduled workflows in a repository with no activity for 60
+# days. If backups stop, check the Actions tab for a "re-enable" banner.
+
+name: Vault backup to MEGA
+
+on:
+  schedule:
+    - cron: '30 18 * * *' # 02:30 in Manila
+  workflow_dispatch:
+
+concurrency:
+  group: vault-mega-backup
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # Recent AWS CLI versions add checksums R2 does not accept by default.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      MEGA_EMAIL: ${{ secrets.MEGA_EMAIL }}
+      MEGA_PASSWORD: ${{ secrets.MEGA_PASSWORD }}
+      MEGA_TOTP_SECRET: ${{ secrets.MEGA_TOTP_SECRET }}
+
+    steps:
+      - name: Check configuration
+        id: config
+        run: |
+          if [[ -z "$R2_ACCOUNT_ID" || -z "$R2_BUCKET" || -z "$AWS_ACCESS_KEY_ID" || -z "$AWS_SECRET_ACCESS_KEY" || -z "$MEGA_EMAIL" || -z "$MEGA_PASSWORD" ]]; then
+            echo "::notice::Vault backup skipped: R2 or MEGA secrets are not set."
+            echo "ready=false" >>"$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >>"$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/checkout@v4
+        if: steps.config.outputs.ready == 'true'
+
+      - name: Install MEGAcmd
+        if: steps.config.outputs.ready == 'true'
+        run: |
+          curl -fsSL -o "$RUNNER_TEMP/megacmd.deb" \
+            https://mega.nz/linux/repo/xUbuntu_24.04/amd64/megacmd-xUbuntu_24.04_amd64.deb
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq "$RUNNER_TEMP/megacmd.deb" oathtool
+
+      - name: Copy new videos to MEGA
+        if: steps.config.outputs.ready == 'true'
+        run: bash scripts/vault-mega-backup.sh

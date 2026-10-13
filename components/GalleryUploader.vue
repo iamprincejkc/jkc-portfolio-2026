@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, markRaw, onBeforeUnmount, ref, watch } from 'vue'
+import type { VaultResume } from '../utils/vaultUpload'
 
 /**
  * Direct-to-Cloudinary uploader.
@@ -16,8 +17,18 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
  * rather than a stack of tall forms, the fields that are the same across a
  * batch are entered once at the top, and the action bar is pinned so it is
  * reachable without travelling past the queue to find it.
+ *
+ * Video takes a different road when the R2 vault is configured: the original
+ * file goes to R2 in parts (`utils/vaultUpload.ts`), with no size cap and no
+ * re-encoding. Without R2, video falls back to Cloudinary and its 100MB cap.
+ * A vault upload that is interrupted keeps its place: retrying it re-sends only
+ * the parts that never landed.
+ *
+ * While uploads run, the screen is kept awake, because a phone that auto-locks
+ * suspends the page and every upload on it.
  */
 
+const props = withDefaults(defineProps<{ vaultReady?: boolean }>(), { vaultReady: false })
 const emit = defineEmits<{ uploaded: [] }>()
 
 /*
@@ -35,7 +46,8 @@ const VIDEO_EXT = ['mp4', 'mov', 'webm', 'm4v']
  * Cloudinary's own limits. It rejects oversized files only after the whole
  * upload has finished, so checking here saves a long wait ending in a
  * confusing error. Photos are downscaled before this check rather than
- * rejected; the cap is the backstop for what cannot be downscaled.
+ * rejected; the cap is the backstop for what cannot be downscaled. The video
+ * cap only applies when video is going to Cloudinary rather than the vault.
  */
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024
@@ -57,6 +69,8 @@ type Item = {
   status: Status
   error?: string
   note?: string
+  /** Vault uploads only: where an interrupted upload picks back up. */
+  vault?: VaultResume
 }
 
 const extensionOf = (name: string) => name.split('.').pop()?.toLowerCase() ?? ''
@@ -75,12 +89,6 @@ function kindOf(file: File): Kind | null {
 function canPreview(file: File): boolean {
   const ext = extensionOf(file.name)
   return !['heic', 'heif'].includes(ext) && !/hei[cf]/.test(file.type)
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
 }
 
 function titleFromFilename(name: string): string {
@@ -124,8 +132,8 @@ function addFiles(files: FileList | File[]) {
       continue
     }
     // Video is checked now because nothing here can shrink it. Photos are
-    // checked after downscaling instead.
-    if (kind === 'video' && file.size > MAX_VIDEO_BYTES) {
+    // checked after downscaling instead. The vault has no cap to check.
+    if (kind === 'video' && !props.vaultReady && file.size > MAX_VIDEO_BYTES) {
       rejected.push(`${file.name} (over ${formatBytes(MAX_VIDEO_BYTES)})`)
       continue
     }
@@ -146,15 +154,21 @@ function addFiles(files: FileList | File[]) {
   summary.value = rejected.length ? `Skipped: ${rejected.join(', ')}` : null
 }
 
+/** Removing a file with a half-finished vault upload frees the parts R2 holds for it. */
+function discard(item: Item) {
+  if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+  if (item.vault && item.status !== 'done') abandonVaultUpload(item.vault)
+}
+
 function remove(id: string) {
   const target = items.value.find((item) => item.id === id)
-  if (target?.previewUrl) URL.revokeObjectURL(target.previewUrl)
+  if (target) discard(target)
   items.value = items.value.filter((item) => item.id !== id)
   if (expanded.value === id) expanded.value = null
 }
 
 function clearAll() {
-  for (const item of items.value) if (item.previewUrl) URL.revokeObjectURL(item.previewUrl)
+  for (const item of items.value) discard(item)
   items.value = []
   summary.value = null
   expanded.value = null
@@ -186,10 +200,40 @@ async function uploadOne(item: Item): Promise<boolean> {
     .filter(Boolean)
     .slice(0, 8)
 
+  if (item.kind === 'video' && props.vaultReady) {
+    // Raw: it holds a Map that only the upload reads, and that nothing renders.
+    item.vault ??= markRaw({})
+    try {
+      await uploadToVault(
+        item.file,
+        { title: item.title, client: batch.value.client, year: batch.value.year, tags },
+        item.vault,
+        {
+          onProgress: (fraction) => {
+            item.progress = Math.round(fraction * 100)
+          },
+          onWaiting: (waiting) => {
+            item.note = waiting ? 'Paused · resumes on return' : undefined
+          },
+        },
+      )
+      item.status = 'done'
+      item.progress = 100
+      item.note = undefined
+      return true
+    } catch (caught: any) {
+      item.status = 'error'
+      item.note = undefined
+      const message = caught?.data?.statusMessage || caught?.message || 'Upload failed.'
+      item.error = item.vault.session ? `${message} Retry picks up where it stopped.` : message
+      return false
+    }
+  }
+
   /*
-   * Downscale before uploading. The gallery never serves wider than 2560px, so
-   * a larger original is bytes nobody sees - and Cloudinary would reject it
-   * anyway, only after the whole upload had finished.
+   * Photos go up as originals. Only one over Cloudinary's 10MB cap is
+   * downscaled, because Cloudinary would reject it anyway - and only after the
+   * whole upload had finished.
    */
   let upload = item.file
   if (item.kind === 'image') {
@@ -278,6 +322,10 @@ async function uploadAll() {
   const queue = items.value.filter((i) => i.status === 'queued' || i.status === 'error')
   if (!queue.length || running.value) return
 
+  // Taken before the first await: Safari only grants a wake lock from inside
+  // the tap that started the upload.
+  const releaseScreen = holdScreenAwake()
+
   running.value = true
   summary.value = null
 
@@ -294,7 +342,11 @@ async function uploadAll() {
     }
   }
 
-  await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker))
+  try {
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, queue.length) }, worker))
+  } finally {
+    releaseScreen()
+  }
 
   running.value = false
   summary.value =
@@ -333,7 +385,8 @@ async function uploadAll() {
         <p class="font-display text-2xl">Drop photos or video here</p>
         <p class="mt-3 text-xs text-text-muted">
           JPEG, PNG, HEIC, WebP, AVIF, GIF to {{ formatBytes(MAX_IMAGE_BYTES) }} ·
-          MP4, MOV, WebM to {{ formatBytes(MAX_VIDEO_BYTES) }}
+          <template v-if="props.vaultReady">MP4, MOV, WebM at any size, kept as the original</template>
+          <template v-else>MP4, MOV, WebM to {{ formatBytes(MAX_VIDEO_BYTES) }}</template>
         </p>
         <button
           type="button"
@@ -509,11 +562,17 @@ async function uploadAll() {
         class="sticky bottom-0 z-30 -mx-6 mt-6 border-t border-border-muted bg-bg/90 px-6 py-4 backdrop-blur-xl lg:-mx-12 lg:px-12"
       >
         <div class="flex flex-wrap items-center justify-between gap-4">
-          <p class="eyebrow">
-            {{ pending.length }} ready<template v-if="totalBytes"> · {{ formatBytes(totalBytes) }}</template>
-            <template v-if="done.length"> · {{ done.length }} done</template>
-            <template v-if="failed.length"> · {{ failed.length }} failed</template>
-          </p>
+          <div>
+            <p class="eyebrow">
+              {{ pending.length }} ready<template v-if="totalBytes"> · {{ formatBytes(totalBytes) }}</template>
+              <template v-if="done.length"> · {{ done.length }} done</template>
+              <template v-if="failed.length"> · {{ failed.length }} failed</template>
+            </p>
+            <!-- A locked phone suspends the page, so say what to do before it happens. -->
+            <p v-if="running" class="mt-1.5 text-[10px] text-text-muted">
+              Keep this page open. The screen stays on; if it locks, uploads resume when you come back.
+            </p>
+          </div>
 
           <div class="flex items-center gap-4">
             <button

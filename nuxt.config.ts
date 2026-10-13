@@ -69,6 +69,8 @@ export default defineNuxtConfig({
    *   NUXT_AUTH_SECRET, NUXT_SITE_PIN, NUXT_ADMIN_PIN,
    *   NUXT_CLOUDINARY_API_KEY, NUXT_CLOUDINARY_API_SECRET,
    *   NUXT_CLOUDINARY_FOLDER, NUXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+   *   NUXT_R2_ACCOUNT_ID, NUXT_R2_ACCESS_KEY_ID, NUXT_R2_SECRET_ACCESS_KEY,
+   *   NUXT_R2_BUCKET,
    *   NUXT_CLOUDFLARE_TURN_KEY_ID, NUXT_CLOUDFLARE_TURN_API_TOKEN (optional, Evently)
    */
   runtimeConfig: {
@@ -78,6 +80,15 @@ export default defineNuxtConfig({
     cloudinaryApiKey: '',
     cloudinaryApiSecret: '',
     cloudinaryFolder: 'gallery',
+    /*
+     * The private video vault on Cloudflare R2. Server-only: the browser gets
+     * presigned URLs, never these. Optional - without them, video uploads fall
+     * back to Cloudinary and its 100MB cap.
+     */
+    r2AccountId: '',
+    r2AccessKeyId: '',
+    r2SecretAccessKey: '',
+    r2Bucket: '',
     /*
      * Last.fm now-playing. Server-side so the API key is never shipped to the
      * browser. Spotify's own Web API needs Premium, which this account does
