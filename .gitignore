@@ -1,7 +1,10 @@
 node_modules
 .nuxt
 .output
+.netlify
 .env
+# Local stand-in for Netlify Blobs (Evently shared worlds in development)
+.data
 .DS_Store
 dist
 
