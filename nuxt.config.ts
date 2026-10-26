@@ -240,6 +240,19 @@ export default defineNuxtConfig({
       evently: { driver: 'fs', base: './.data/evently' },
     },
 
+    /*
+     * A second copy runs on Cloudflare Pages for testing. The server signs
+     * with `node:crypto` - the session cookie, R2 uploads, Cloudinary - and
+     * without this Nitro swaps in unenv's stand-ins, whose createHmac,
+     * createHash and timingSafeEqual only throw. The gate would fail on every
+     * request.
+     *
+     * The Pages project must also carry the `nodejs_compat` compatibility flag,
+     * or the function cannot load `node:crypto` at all. Netlify builds ignore
+     * this block.
+     */
+    cloudflare: { nodeCompat: true },
+
     // Netlify auto-detects its preset during a Netlify build; this keeps
     // `npm run build` honest when run anywhere else.
     // robots and the sitemap never change per request, so they are baked at
