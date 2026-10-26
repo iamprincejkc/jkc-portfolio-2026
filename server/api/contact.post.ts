@@ -82,8 +82,17 @@ export default defineEventHandler(async (event) => {
     // Rendered in JKC's own timezone; toUTCString would show GMT, which is
     // never the time he actually received it.
     receivedAt: formatReceived(new Date()),
-    siteUrl: String(config.public.siteUrl ?? 'https://iamjkc.space'),
+    /*
+     * The site the form was actually sent from - iamprincejkc.netlify.app or
+     * iamprincejkc.pages.dev - rather than the canonical origin. That one stays
+     * on Netlify for search engines, and named every message from the
+     * Cloudflare copy as Netlify.
+     */
+    siteUrl: getRequestURL(event).origin,
   }
+
+  // Netlify Forms only exists on the Netlify deploy, wherever the form was sent.
+  const archiveUrl = String(config.public.siteUrl ?? 'https://iamprincejkc.netlify.app')
 
   const notify = (sender: string) =>
     $fetch('https://api.resend.com/emails', {
@@ -165,7 +174,7 @@ export default defineEventHandler(async (event) => {
    * reported to the visitor as a failure to send.
    */
   try {
-    await $fetch(payload.siteUrl.replace(/\/$/, '') + '/forms.html', {
+    await $fetch(archiveUrl.replace(/\/$/, '') + '/forms.html', {
       method: 'POST',
       headers: { 'content-type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({

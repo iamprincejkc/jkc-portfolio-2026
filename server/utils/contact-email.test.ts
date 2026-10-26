@@ -144,6 +144,20 @@ describe('structure', () => {
     expect(html).toContain('Hello there')
   })
 
+  it('names the site the message was sent from', () => {
+    // A message from the Cloudflare copy must not be labelled as Netlify.
+    const html = renderContactEmail({ ...base, siteUrl: 'https://iamprincejkc.pages.dev' })
+    expect(html).toContain('Sent from the contact form on')
+    expect(html).toContain('iamprincejkc.pages.dev')
+    expect(html).not.toContain('netlify')
+  })
+
+  it('declares itself light-only', () => {
+    for (const html of [renderContactEmail(base), renderAutoReply(base)]) {
+      expect(html).toContain('<meta name="color-scheme" content="light" />')
+    }
+  })
+
   it('does not leak the recipient address into the auto-reply body', () => {
     // The confirmation goes to a stranger; JKC's own inbox address should not
     // be printed in it.
@@ -180,6 +194,7 @@ describe('lapsed sending domain', () => {
   it('keeps the display name and swaps only the address', () => {
     expect(fallbackSender('JKC <hello@iamjkc.space>')).toBe(`JKC <${RESEND_TEST_SENDER}>`)
     expect(fallbackSender('"Jan Kevin" <hi@iamjkc.space>')).toBe(`"Jan Kevin" <${RESEND_TEST_SENDER}>`)
-    expect(fallbackSender('hello@iamjkc.space')).toBe(RESEND_TEST_SENDER)
+    // A bare address gets a name, so the inbox does not just say "onboarding".
+    expect(fallbackSender('hello@iamjkc.space')).toBe(`Portfolio contact <${RESEND_TEST_SENDER}>`)
   })
 })

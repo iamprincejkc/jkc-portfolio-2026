@@ -7,22 +7,21 @@
  * predictably except tables with inline styles. Everything here is written to
  * that constraint rather than to what looks tidy in a browser.
  *
- * Melodrama cannot be loaded, so the display face falls back to a serif stack.
- * That is deliberate: a webfont that fails leaves the heading in whatever the
- * client picks, which is worse than choosing the fallback ourselves.
+ * The look is deliberately plain: a white card on a pale ground, one system
+ * typeface, hairlines rather than fills, and black for the one action. It
+ * declares itself light-only. A client that forces dark mode will still
+ * invert it, but nothing here relies on a colour surviving that.
  */
 
-const INK = '#fafafa'
-const MUTED = '#8c8c8c'
-const FAINT = '#5f5f5f'
-const BG = '#0a0a0a'
-const SURFACE = '#151515'
-const QUOTE_BG = '#1c1c1c'
-const ACCENT = '#e8d4a0'
-const LINE = '#2b2b2b'
+const INK = '#18181b'
+const MUTED = '#52525b'
+const FAINT = '#a1a1aa'
+const PAGE = '#f4f4f5'
+const CARD = '#ffffff'
+const QUOTE_BG = '#fafafa'
+const LINE = '#e4e4e7'
 
 const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif"
-const SERIF = "Georgia,'Times New Roman',Times,serif"
 
 export type ContactMessage = {
   name: string
@@ -92,7 +91,7 @@ export function siteHost(siteUrl: string): string {
     return new URL(siteUrl).host
   } catch {
     // A misconfigured NUXT_PUBLIC_SITE_URL must not take the contact form
-    // down; an email with no wordmark still delivers the message.
+    // down; an email with no site name still delivers the message.
     return siteUrl.replace(/^https?:\/\//, '').replace(/\/.*$/, '')
   }
 }
@@ -121,31 +120,37 @@ export function isUnverifiedDomain(error: unknown): boolean {
 /**
  * The configured sender with its address swapped for Resend's shared one,
  * keeping the display name: `JKC <hello@iamjkc.space>` becomes
- * `JKC <onboarding@resend.dev>`.
+ * `JKC <onboarding@resend.dev>`. A bare address gets a name, so the inbox
+ * says what the message is rather than showing Resend's address.
  */
 export function fallbackSender(from: string): string {
-  return /<[^>]*>/.test(from) ? from.replace(/<[^>]*>/, `<${RESEND_TEST_SENDER}>`) : RESEND_TEST_SENDER
+  return /<[^>]*>/.test(from)
+    ? from.replace(/<[^>]*>/, `<${RESEND_TEST_SENDER}>`)
+    : `Portfolio contact <${RESEND_TEST_SENDER}>`
 }
 
-function shell(host: string, preheader: string, inner: string): string {
+function shell(title: string, preheader: string, inner: string): string {
   return `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<meta name="color-scheme" content="dark light" />
-<meta name="supported-color-schemes" content="dark light" />
-<title>${escapeHtml(host)}</title>
+<meta name="color-scheme" content="light" />
+<meta name="supported-color-schemes" content="light" />
+<title>${escapeHtml(title)}</title>
 </head>
-<body style="margin:0;padding:0;background:${BG};-webkit-font-smoothing:antialiased;">
+<body style="margin:0;padding:0;background:${PAGE};-webkit-font-smoothing:antialiased;">
   <!-- Inbox preview line. Hidden in the body itself. -->
   <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">
     ${escapeHtml(preheader)}
   </div>
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${BG};">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${PAGE};">
     <tr>
       <td align="center" style="padding:40px 16px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:580px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:560px;">
+          <tr>
+            <td style="padding:0 4px 18px;font:700 14px/1 ${SANS};letter-spacing:-0.01em;color:${INK};">JKC</td>
+          </tr>
           ${inner}
         </table>
       </td>
@@ -155,95 +160,88 @@ function shell(host: string, preheader: string, inner: string): string {
 </html>`
 }
 
-function wordmark(host: string): string {
+function card(inner: string): string {
   return `
   <tr>
-    <td style="padding:0 4px 22px;">
-      <span style="font:600 13px/1 ${SANS};letter-spacing:0.02em;color:${INK};">JKC</span>
-      <span style="font:400 13px/1 ${SANS};color:${FAINT};">&nbsp;&nbsp;${escapeHtml(host)}</span>
+    <td style="background:${CARD};border:1px solid ${LINE};border-radius:12px;padding:36px 32px;">
+      ${inner}
     </td>
   </tr>`
 }
 
-function field(label: string, value: string): string {
+function footnote(html: string): string {
   return `
   <tr>
-    <td style="padding:0 0 6px;font:600 10px/1.4 ${SANS};letter-spacing:0.16em;text-transform:uppercase;color:${FAINT};">
-      ${escapeHtml(label)}
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:0 0 24px;font:400 16px/1.45 ${SANS};color:${INK};">
-      ${value}
+    <td style="padding:18px 4px 0;font:400 12px/1.6 ${SANS};color:${FAINT};">
+      ${html}
     </td>
   </tr>`
+}
+
+/** One labelled line of the details list, ruled off from the one above. */
+function detail(label: string, value: string): string {
+  return `
+  <tr>
+    <td width="84" valign="top" style="padding:11px 0;border-top:1px solid ${LINE};font:400 13px/1.5 ${SANS};color:${FAINT};">${escapeHtml(label)}</td>
+    <td valign="top" style="padding:11px 0;border-top:1px solid ${LINE};font:400 14px/1.5 ${SANS};color:${INK};">${value}</td>
+  </tr>`
+}
+
+/** Their words, set apart so they read as a quotation rather than as ours. */
+function quote(message: string): string {
+  return `
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td style="background:${QUOTE_BG};border:1px solid ${LINE};border-radius:8px;padding:18px 20px;font:400 15px/1.65 ${SANS};color:${INK};">
+        ${formatMessage(message)}
+      </td>
+    </tr>
+  </table>`
+}
+
+/**
+ * The one action. The fill sits on the table cell, not the link: Outlook
+ * drops backgrounds and padding on an `<a>` but keeps them on a cell.
+ */
+function button(href: string, label: string): string {
+  return `
+  <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+    <tr>
+      <td bgcolor="${INK}" style="background:${INK};border-radius:8px;">
+        <a href="${href}" style="display:inline-block;padding:12px 20px;font:600 14px/1 ${SANS};color:#ffffff;text-decoration:none;border-radius:8px;">${label}</a>
+      </td>
+    </tr>
+  </table>`
 }
 
 /** The notification that goes to JKC. */
 export function renderContactEmail(msg: ContactMessage): string {
   const host = siteHost(msg.siteUrl)
+  const first = escapeHtml(firstName(msg.name))
   const mailto = `mailto:${encodeURI(msg.email)}?subject=${encodeURIComponent(`Re: your message via ${host}`)}`
 
   const inner = `
-  ${wordmark(host)}
-  <tr>
-    <td style="background:${SURFACE};border:1px solid ${LINE};border-radius:4px;padding:36px 34px;">
+  ${card(`
+      <div style="padding:0 0 6px;font:500 13px/1.4 ${SANS};color:${MUTED};">New message</div>
+      <div style="padding:0 0 24px;font:600 22px/1.3 ${SANS};letter-spacing:-0.01em;color:${INK};">${escapeHtml(msg.name)} got in touch</div>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:0 0 4px;font:600 10px/1.4 ${SANS};letter-spacing:0.18em;text-transform:uppercase;color:${ACCENT};">
-            New enquiry
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 0 30px;font:400 27px/1.25 ${SERIF};color:${INK};letter-spacing:-0.01em;">
-            ${escapeHtml(msg.name)} got in touch
-          </td>
-        </tr>
-      </table>
-
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        ${field('From', escapeHtml(msg.name))}
-        ${field(
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid ${LINE};">
+        ${detail(
           'Email',
-          `<a href="mailto:${encodeURI(msg.email)}" style="color:${ACCENT};text-decoration:none;">${escapeHtml(msg.email)}</a>`,
+          `<a href="mailto:${encodeURI(msg.email)}" style="color:${INK};text-decoration:underline;">${escapeHtml(msg.email)}</a>`,
         )}
+        ${detail('Received', escapeHtml(msg.receivedAt))}
       </table>
 
-      <!-- The message gets its own surface so it reads as their words. -->
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:0 0 8px;font:600 10px/1.4 ${SANS};letter-spacing:0.16em;text-transform:uppercase;color:${FAINT};">
-            Message
-          </td>
-        </tr>
-        <tr>
-          <td style="background:${QUOTE_BG};border-left:2px solid ${ACCENT};border-radius:0 3px 3px 0;padding:18px 20px;font:400 16px/1.6 ${SANS};color:${INK};">
-            ${formatMessage(msg.message)}
-          </td>
-        </tr>
-      </table>
+      <div style="padding:24px 0 0;">${quote(msg.message)}</div>
+      <div style="padding:28px 0 0;">${button(mailto, `Reply to ${first}`)}</div>
+  `)}
+  ${footnote(
+    `Sent from the contact form on <a href="${escapeHtml(msg.siteUrl)}" style="color:${MUTED};text-decoration:underline;">${escapeHtml(host)}</a>.
+    Replying to this email goes straight to ${first}.`,
+  )}`
 
-      <table role="presentation" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:30px 0 0;">
-            <a href="${mailto}" style="display:inline-block;padding:14px 26px;background:${ACCENT};color:${BG};font:600 11px/1 ${SANS};letter-spacing:0.14em;text-transform:uppercase;text-decoration:none;border-radius:3px;">
-              Reply to ${escapeHtml(firstName(msg.name))}
-            </a>
-          </td>
-        </tr>
-      </table>
-
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:20px 4px 0;font:400 12px/1.6 ${SANS};color:${FAINT};">
-      Received ${escapeHtml(msg.receivedAt)} &middot; archived in Netlify Forms.<br />
-      Replying to this email goes straight to ${escapeHtml(firstName(msg.name))}.
-    </td>
-  </tr>`
-
-  return shell(host, `${msg.name}: ${subjectSnippet(msg.message, 90)}`, inner)
+  return shell(`New message from ${msg.name}`, `${msg.name}: ${subjectSnippet(msg.message, 90)}`, inner)
 }
 
 export function renderContactText(msg: ContactMessage): string {
@@ -271,62 +269,27 @@ export function renderContactText(msg: ContactMessage): string {
 export function renderAutoReply(msg: ContactMessage): string {
   const host = siteHost(msg.siteUrl)
   const inner = `
-  ${wordmark(host)}
-  <tr>
-    <td style="background:${SURFACE};border:1px solid ${LINE};border-radius:4px;padding:36px 34px;">
+  ${card(`
+      <div style="padding:0 0 12px;font:600 22px/1.3 ${SANS};letter-spacing:-0.01em;color:${INK};">Thanks, ${escapeHtml(firstName(msg.name))}.</div>
+      <div style="padding:0 0 24px;font:400 15px/1.65 ${SANS};color:${MUTED};">
+        Your message reached me and I'll reply personally, usually within a
+        day or two. No action needed from you in the meantime.
+      </div>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:0 0 20px;font:400 27px/1.25 ${SERIF};color:${INK};letter-spacing:-0.01em;">
-            Thanks, ${escapeHtml(firstName(msg.name))}.
-          </td>
-        </tr>
-        <tr>
-          <td style="padding:0 0 26px;font:400 16px/1.6 ${SANS};color:${MUTED};">
-            Your message reached me and I'll reply personally, usually within a
-            day or two. No action needed from you in the meantime.
-          </td>
-        </tr>
-      </table>
+      <div style="padding:0 0 8px;font:500 13px/1.4 ${SANS};color:${MUTED};">What you sent</div>
+      ${quote(msg.message)}
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:0 0 8px;font:600 10px/1.4 ${SANS};letter-spacing:0.16em;text-transform:uppercase;color:${FAINT};">
-            What you sent
-          </td>
-        </tr>
-        <tr>
-          <td style="background:${QUOTE_BG};border-left:2px solid ${LINE};border-radius:0 3px 3px 0;padding:18px 20px;font:400 15px/1.6 ${SANS};color:${MUTED};">
-            ${formatMessage(msg.message)}
-          </td>
-        </tr>
-      </table>
+      <div style="margin:28px 0 0;padding:20px 0 0;border-top:1px solid ${LINE};">
+        <div style="font:600 14px/1.5 ${SANS};color:${INK};">Jan Kevin Cadampog</div>
+        <div style="font:400 13px/1.5 ${SANS};color:${MUTED};">Software Engineer &middot; Cebu City</div>
+        <div style="padding-top:8px;font:400 13px/1.5 ${SANS};">
+          <a href="${escapeHtml(msg.siteUrl)}" style="color:${INK};text-decoration:underline;">${escapeHtml(host)}</a>
+        </div>
+      </div>
+  `)}
+  ${footnote('This is an automatic confirmation, but replying to it does reach me.')}`
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
-        <tr>
-          <td style="padding:30px 0 0;border-top:1px solid ${LINE};margin-top:30px;">
-            <div style="padding-top:22px;font:400 15px/1.5 ${SANS};color:${INK};">
-              Jan Kevin Cadampog
-            </div>
-            <div style="padding-top:3px;font:400 13px/1.5 ${SANS};color:${FAINT};">
-              Software Engineer &middot; Cebu City
-            </div>
-            <div style="padding-top:12px;font:400 13px/1.5 ${SANS};">
-              <a href="${msg.siteUrl}" style="color:${ACCENT};text-decoration:none;">${escapeHtml(siteHost(msg.siteUrl))}</a>
-            </div>
-          </td>
-        </tr>
-      </table>
-
-    </td>
-  </tr>
-  <tr>
-    <td style="padding:20px 4px 0;font:400 12px/1.6 ${SANS};color:${FAINT};">
-      This is an automatic confirmation — but replying to it does reach me.
-    </td>
-  </tr>`
-
-  return shell(host, `Thanks for getting in touch — I'll reply personally.`, inner)
+  return shell('Thanks for getting in touch', `Thanks for getting in touch — I'll reply personally.`, inner)
 }
 
 export function renderAutoReplyText(msg: ContactMessage): string {
