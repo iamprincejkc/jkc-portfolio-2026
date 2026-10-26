@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import {
+  RESEND_TEST_SENDER,
+  fallbackSender,
   firstName,
   formatReceived,
+  isUnverifiedDomain,
   renderAutoReply,
   renderContactEmail,
   renderContactText,
@@ -146,5 +149,37 @@ describe('structure', () => {
     // be printed in it.
     const html = renderAutoReply(base)
     expect(html).not.toContain('nogame1697')
+  })
+})
+
+describe('lapsed sending domain', () => {
+  // The shape ofetch throws: status on the error, Resend's JSON body in `data`.
+  const resendError = (statusCode: number, message: string) => ({
+    statusCode,
+    data: { statusCode, name: 'validation_error', message },
+  })
+
+  it('recognises Resend refusing an unverified domain', () => {
+    const lapsed = resendError(
+      403,
+      'The iamjkc.space domain is not verified. Please, add and verify your domain on https://resend.com/domains',
+    )
+    expect(isUnverifiedDomain(lapsed)).toBe(true)
+  })
+
+  it('leaves every other refusal alone, so it still fails loudly', () => {
+    // A bad key or the shared sender's own limit must not be rerouted.
+    expect(isUnverifiedDomain(resendError(401, 'API key is invalid'))).toBe(false)
+    expect(
+      isUnverifiedDomain(resendError(403, 'You can only send testing emails to your own email address (a@b.c).')),
+    ).toBe(false)
+    expect(isUnverifiedDomain(new Error('fetch failed'))).toBe(false)
+    expect(isUnverifiedDomain(null)).toBe(false)
+  })
+
+  it('keeps the display name and swaps only the address', () => {
+    expect(fallbackSender('JKC <hello@iamjkc.space>')).toBe(`JKC <${RESEND_TEST_SENDER}>`)
+    expect(fallbackSender('"Jan Kevin" <hi@iamjkc.space>')).toBe(`"Jan Kevin" <${RESEND_TEST_SENDER}>`)
+    expect(fallbackSender('hello@iamjkc.space')).toBe(RESEND_TEST_SENDER)
   })
 })
