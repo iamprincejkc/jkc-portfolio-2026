@@ -1,5 +1,7 @@
 import {
+  fallbackSender,
   formatReceived,
+  isUnverifiedDomain,
   renderAutoReply,
   renderAutoReplyText,
   renderContactEmail,
@@ -83,12 +85,12 @@ export default defineEventHandler(async (event) => {
     siteUrl: String(config.public.siteUrl ?? 'https://iamjkc.space'),
   }
 
-  try {
-    await $fetch('https://api.resend.com/emails', {
+  const notify = (sender: string) =>
+    $fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: { Authorization: `Bearer ${apiKey}` },
       body: {
-        from,
+        from: sender,
         to: [to],
         // Carry a snippet so the inbox list says what the message is about.
         subject: `${name}: ${subjectSnippet(message)}`,
@@ -98,10 +100,27 @@ export default defineEventHandler(async (event) => {
         reply_to: email,
       },
     })
-  } catch (error) {
+
+  /*
+   * If the sending domain has lapsed, send from Resend's shared address
+   * instead. Resend delivers from it only to the account owner - which is
+   * exactly who this notification is for - so the message still reaches a
+   * human while the domain is sorted out, with no settings to change on
+   * either host.
+   */
+  let sender = from
+  try {
+    await notify(sender).catch(async (error) => {
+      if (!isUnverifiedDomain(error)) throw error
+      console.warn('[contact] Sending domain is not verified; using Resend\'s shared sender.')
+      sender = fallbackSender(from)
+      await notify(sender)
+    })
+  } catch (error: any) {
     // Translate rather than propagate: Resend answers a bad key with 401, and
     // surfacing that verbatim would tell the visitor they are unauthorised.
-    console.error('[contact] Resend rejected the send:', error)
+    // Resend's own explanation is in `data`; the log is where it is useful.
+    console.error('[contact] Resend rejected the send:', error, error?.data)
     throw createError({
       statusCode: 502,
       statusMessage: 'Could not send your message. Please email me directly.',
@@ -113,26 +132,31 @@ export default defineEventHandler(async (event) => {
    * in the UI and the real message is delivered, so a failure here is not
    * worth turning into an error for either party.
    *
+   * Skipped on the shared sender, which cannot reach anyone but the account
+   * owner - attempting it would only add a refusal to the log.
+   *
    * Note this is an unverified address - anyone can put someone else's email
    * in the form and cause one message from this domain. The per-IP limit above
    * is what keeps that from being useful for amplification.
    */
-  try {
-    await $fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${apiKey}` },
-      body: {
-        from,
-        to: [email],
-        subject: 'Thanks for getting in touch',
-        html: renderAutoReply(payload),
-        text: renderAutoReplyText(payload),
-        // If they reply to the confirmation, it should reach a person.
-        reply_to: to,
-      },
-    })
-  } catch (error) {
-    console.error('[contact] Could not send the confirmation:', error)
+  if (sender === from) {
+    try {
+      await $fetch('https://api.resend.com/emails', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${apiKey}` },
+        body: {
+          from,
+          to: [email],
+          subject: 'Thanks for getting in touch',
+          html: renderAutoReply(payload),
+          text: renderAutoReplyText(payload),
+          // If they reply to the confirmation, it should reach a person.
+          reply_to: to,
+        },
+      })
+    } catch (error) {
+      console.error('[contact] Could not send the confirmation:', error)
+    }
   }
 
   /*

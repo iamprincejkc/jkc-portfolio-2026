@@ -97,6 +97,36 @@ export function siteHost(siteUrl: string): string {
   }
 }
 
+/**
+ * Resend's shared sender. It needs no domain of our own, but Resend only
+ * delivers from it to the address the Resend account was registered with.
+ */
+export const RESEND_TEST_SENDER = 'onboarding@resend.dev'
+
+/**
+ * Did Resend refuse the send because the From domain is not verified?
+ *
+ * That is what happens when the domain lapses: iamjkc.space expired and left
+ * DNS, its DKIM and SPF records went with it, and every send answered 403 -
+ * on Netlify and Cloudflare alike. Matched narrowly on Resend's own wording so
+ * a bad key or a malformed address still fails loudly instead of being
+ * quietly rerouted.
+ */
+export function isUnverifiedDomain(error: unknown): boolean {
+  const e = error as { statusCode?: number; status?: number; data?: { message?: unknown } } | null
+  const status = e?.statusCode ?? e?.status
+  return status === 403 && /domain is not verified/i.test(String(e?.data?.message ?? ''))
+}
+
+/**
+ * The configured sender with its address swapped for Resend's shared one,
+ * keeping the display name: `JKC <hello@iamjkc.space>` becomes
+ * `JKC <onboarding@resend.dev>`.
+ */
+export function fallbackSender(from: string): string {
+  return /<[^>]*>/.test(from) ? from.replace(/<[^>]*>/, `<${RESEND_TEST_SENDER}>`) : RESEND_TEST_SENDER
+}
+
 function shell(host: string, preheader: string, inner: string): string {
   return `<!doctype html>
 <html lang="en">
