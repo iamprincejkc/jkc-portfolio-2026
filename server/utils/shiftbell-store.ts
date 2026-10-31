@@ -12,6 +12,22 @@ export function shiftbellStore() {
   return useStorage('shiftbell')
 }
 
+/**
+ * Runs the storage part of a request. A storage failure is logged with its cause and answered as a 503 that
+ * names the error class and message, instead of a bare 500: the devices only need "try again", and whoever
+ * debugs the relay without dashboard access gets the reason from the response itself.
+ */
+export async function withStorage<T>(work: () => Promise<T>): Promise<T> {
+  try {
+    return await work()
+  } catch (error) {
+    if (isError(error)) throw error
+    const reason = error instanceof Error ? `${error.name}: ${error.message}` : String(error)
+    console.error('[shiftbell] storage failed', error)
+    throw createError({ statusCode: 503, statusMessage: `Sync storage failed. ${reason}`.slice(0, 300) })
+  }
+}
+
 export function channelParam(event: H3Event): string {
   const channel = getRouterParam(event, 'channel') ?? ''
   if (!CHANNEL_ID.test(channel)) throw createError({ statusCode: 404, statusMessage: 'No such channel.' })
