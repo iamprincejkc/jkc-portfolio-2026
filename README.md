@@ -330,6 +330,26 @@ WebRTC. Nothing here relays their movement. Two pieces live in this repo:
   `server/utils/csp-in-step.test.ts` fails if the deployed bundle's relays and the
   policy drift apart, or if `netlify.toml` and the middleware do.
 
+## Shiftbell sync relay (`/api/shiftbell/{channel}`)
+
+The owner's time-in alarm runs on the PC and on the phone (`Personal/Shiftbell`).
+This relay lets them tell each other "timed in", "snoozed" and "day off", so
+confirming on one stops the other. The protocol is in that repo's `docs/sync.md`.
+
+```
+server/utils/shiftbell.ts         ← rules: ids, limits, pruning, token check (unit tested)
+server/utils/shiftbell-store.ts   ← storage access and request guards
+server/api/shiftbell/[channel].*  ← GET events since a time · POST one event
+```
+
+Events are end-to-end encrypted by the devices; the server stores opaque base64url
+and never sees the pairing secret. The first write claims a channel for its token
+(only the SHA-256 is kept). Each event is its own key, so simultaneous writes from
+both devices cannot overwrite each other, and the clients merge in any order, so
+there is no version check. Events older than 30 days or beyond 500 per channel are
+dropped on write. Storage is the `shiftbell` mount: Netlify Blobs with strong
+consistency, `.data/shiftbell` in development.
+
 ## Security and licensing
 
 - **[SECURITY.md](SECURITY.md)** — how to report something, what protects what
