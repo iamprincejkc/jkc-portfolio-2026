@@ -1,16 +1,18 @@
 import type { H3Event } from 'h3'
 import { PHOTO_NAME, WORLD_ID, bearerToken, keys, sizeProblem, tokenMatches, type WorldMeta } from './evently'
+import { requestBlobs } from './blobs'
 
 /**
  * The storage half of Evently's shared worlds. The rules live in `evently.ts`;
  * this is where they meet the request and the store.
  *
- * The `evently` mount is Netlify Blobs in production and a folder under
- * `.data/` in development - see `nitro.storage` in nuxt.config.ts.
+ * Netlify Blobs store `evently-worlds` in production, made per request (see
+ * blobs.ts: a long-lived client's token expires), and a folder under `.data/`
+ * in development - see `nitro.devStorage` in nuxt.config.ts.
  */
 
 export function eventlyStore() {
-  return useStorage('evently')
+  return requestBlobs('evently', 'evently-worlds')
 }
 
 /**
