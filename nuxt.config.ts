@@ -230,15 +230,14 @@ export default defineNuxtConfig({
      * would see the old one, and the version check that protects concurrent
      * editors would be comparing against a stale number.
      *
+     * Production has no `storage` mount on purpose: the netlify-blobs driver
+     * keeps its first client forever and that client's token expires, so the
+     * stores are made per request in server/utils/blobs.ts. Shiftbell's sync
+     * relay (server/utils/shiftbell.ts) uses the same helper.
+     *
      * A plain folder in development, because Blobs only has a context inside a
      * Netlify function. `.data/` is gitignored.
      */
-    storage: {
-      evently: { driver: 'netlify-blobs', name: 'evently-worlds', consistency: 'strong' },
-      // Shiftbell's PC and phone alarm sync: encrypted events, read right after they are written,
-      // so strong consistency for the same reason. See server/utils/shiftbell.ts.
-      shiftbell: { driver: 'netlify-blobs', name: 'shiftbell-sync', consistency: 'strong' },
-    },
     devStorage: {
       evently: { driver: 'fs', base: './.data/evently' },
       shiftbell: { driver: 'fs', base: './.data/shiftbell' },

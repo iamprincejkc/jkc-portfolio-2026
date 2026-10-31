@@ -2,14 +2,15 @@ import type { H3Event } from 'h3'
 import { bearerToken } from './evently'
 import { ACCESS_TOKEN, CHANNEL_ID, SHIFTBELL_LIMITS, accessTokenMatches, shiftbellKeys, type ChannelMeta } from './shiftbell'
 import { consume } from './rate-limit'
+import { requestBlobs } from './blobs'
 
 /**
- * Where Shiftbell's rules meet the request and the store. The `shiftbell` mount is Netlify Blobs with
- * strong consistency in production and a folder under `.data/` in development (nuxt.config.ts).
+ * Where Shiftbell's rules meet the request and the store: Netlify Blobs store `shiftbell-sync` with strong
+ * consistency in production, a folder under `.data/` in development. See blobs.ts for why it is per request.
  */
 
 export function shiftbellStore() {
-  return useStorage('shiftbell')
+  return requestBlobs('shiftbell', 'shiftbell-sync')
 }
 
 /**
