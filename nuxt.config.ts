@@ -235,9 +235,13 @@ export default defineNuxtConfig({
      */
     storage: {
       evently: { driver: 'netlify-blobs', name: 'evently-worlds', consistency: 'strong' },
+      // Shiftbell's PC and phone alarm sync: encrypted events, read right after they are written,
+      // so strong consistency for the same reason. See server/utils/shiftbell.ts.
+      shiftbell: { driver: 'netlify-blobs', name: 'shiftbell-sync', consistency: 'strong' },
     },
     devStorage: {
       evently: { driver: 'fs', base: './.data/evently' },
+      shiftbell: { driver: 'fs', base: './.data/shiftbell' },
     },
 
     /*
