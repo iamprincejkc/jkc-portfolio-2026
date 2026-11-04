@@ -209,6 +209,19 @@ export default defineNuxtConfig({
     '/gallery/**': { ssr: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
 
     /*
+     * /monthsary is unlisted, and public by design - it opens from a link with
+     * no PIN. The page is a static shell: it fetches its photos after mount, so
+     * nothing per-request is baked in, and it is prerendered like /about.
+     * Netlify's X-Robots-Tag for it is in netlify.toml.
+     *
+     * The song gets a day because it keeps its name. Its rule names the file,
+     * not `/monthsary/**`: that pattern also matches `/monthsary` itself and
+     * would cache the page for a day.
+     */
+    '/monthsary': { prerender: true, headers: { 'X-Robots-Tag': 'noindex, nofollow' } },
+    '/monthsary/ngiti.mp3': { headers: { 'cache-control': 'public, max-age=86400, stale-while-revalidate=604800' } },
+
+    /*
      * Evently is a prebuilt Three.js bundle in public/evently, served as a
      * static directory.
      *
@@ -262,7 +275,7 @@ export default defineNuxtConfig({
     // build time and served straight from the CDN.
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/about', '/qr-generator', '/n8n', '/public-api', '/robots.txt', '/sitemap.xml'],
+      routes: ['/', '/about', '/qr-generator', '/n8n', '/public-api', '/monthsary', '/robots.txt', '/sitemap.xml'],
     },
   },
 })

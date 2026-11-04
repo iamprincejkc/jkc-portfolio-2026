@@ -19,6 +19,7 @@ export default defineEventHandler((event) => {
     'Disallow: /gate',
     'Disallow: /gallery',
     'Disallow: /evently',
+    'Disallow: /monthsary',
     '',
     '# The workflow library is one page backed by ~2,000 JSON files. The page',
     '# is worth indexing; the data behind it is not - it has no title, nothing',

@@ -1,9 +1,9 @@
 /**
  * sitemap.xml
  *
- * Lists the public pages. /gallery and /evently are deliberately absent: they
- * are unlisted, and putting them here would be the fastest way to get them
- * indexed. /qr-generator, /n8n and /public-api are genuinely public tools and
+ * Lists the public pages. /gallery, /evently and /monthsary are deliberately
+ * absent: they are unlisted, and putting them here would be the fastest way to
+ * get them indexed. /qr-generator, /n8n and /public-api are genuinely public tools and
  * belong here.
  *
  * The per-workflow files under /n8n/ and the catalog under /public-api/ are

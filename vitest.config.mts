@@ -13,6 +13,10 @@ import { defineConfig } from 'vitest/config'
  * derivation, search and its facet counts, the diagram's layout, the
  * escape-first markdown renderer, and the colour palette.
  *
+ * `utils/monthsary/` covers /monthsary's motion: the layout, tracing the words
+ * into tile targets, the tornado choreography against a stepped clock, and the
+ * fireworks simulation.
+ *
  * Every module under test is a pure function that takes its inputs as
  * arguments, so none of them need a Nuxt runtime, `useRuntimeConfig`, or a
  * DOM.
