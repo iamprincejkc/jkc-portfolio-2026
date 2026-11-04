@@ -53,3 +53,10 @@
   for = "/evently/*"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow, noarchive"
+
+# Public on purpose (no PIN), but unlisted. The exact path, not /monthsary/*,
+# so the song beside it keeps its own cache rule from nuxt.config.ts.
+[[headers]]
+  for = "/monthsary"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"

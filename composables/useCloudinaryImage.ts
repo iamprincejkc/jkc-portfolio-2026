@@ -97,6 +97,16 @@ export function useCloudinaryImage() {
   }
 
   /**
+   * A square crop, for tiles that cannot keep the photo's own shape.
+   *
+   * `g_auto` lets Cloudinary pick the part of the frame that matters - faces,
+   * usually - instead of the dead centre, which crops a portrait at the chin.
+   */
+  function square(publicId: string, size: number): string {
+    return base('image', ['c_fill', 'g_auto', `w_${size}`, `h_${size}`, 'f_auto', 'q_auto:eco'], publicId)
+  }
+
+  /**
    * A still frame from the video, used as the poster.
    *
    * `so_0` seeks to the first second rather than 0 - the very first frame of a
@@ -117,7 +127,7 @@ export function useCloudinaryImage() {
     return media.kind === 'video' ? videoPoster(media.publicId, width) : url(media.publicId, width)
   }
 
-  return { url, srcset, src, videoPoster, videoSrc, posterFor, cloudName }
+  return { url, srcset, src, square, videoPoster, videoSrc, posterFor, cloudName }
 }
 
 /** mm:ss for a duration in seconds. */

@@ -38,7 +38,8 @@ jkc-portfolio/
 │   ├── index.vue              ← composes all sections
 │   ├── qr-generator.vue       ← ★ the QR tool (see below)
 │   ├── n8n.vue                ← ★ the workflow library (see below)
-│   └── public-api.vue         ← ★ the public API directory (see below)
+│   ├── public-api.vue         ← ★ the public API directory (see below)
+│   └── monthsary.vue          ← ★ unlisted: photos → tornado → words → cake (see below)
 ├── components/
 │   ├── SiteHeader.vue         ← sticky header with hide-on-scroll
 │   ├── SiteFooter.vue
@@ -78,6 +79,13 @@ jkc-portfolio/
 ├── utils/public-api/          ← the API directory's engine, also unit-tested
 │   ├── parse.ts               ← the upstream README → catalog rows
 │   └── search.ts              ← client-side search, filters and facet counts
+├── utils/monthsary/           ← /monthsary's motion, pure and unit-tested
+│   ├── layout.ts              ← where the words and the cake sit, per viewport
+│   ├── text-targets.ts        ← the words' pixels → one point per tile
+│   ├── choreography.ts        ← wall, tornado and words as pure functions of time
+│   ├── sky.ts                 ← fireworks and falling hearts, simulation only
+│   ├── cake.ts + cake.json    ← the cake's SVG morphs, from CodePen (MIT)
+│   └── heart.ts               ← the one heart path everything draws
 ├── assets/css/main.css        ← base styles, marquee/rotator/header CSS
 ├── assets/css/qr.css          ← the QR tool's liquid-glass system
 ├── assets/css/n8n.css         ← the workflow library's clay system
@@ -296,6 +304,42 @@ decorative, so it is progressive enhancement behind
 animations gets the same hero, still.
 
 Run its tests with `npm test`.
+
+## The monthsary page (`/monthsary`)
+
+An unlisted page for one person, opened from a link.
+There is no PIN: it is meant to open from a message.
+It is `noindex`, disallowed in `robots.txt` and absent from the sitemap.
+
+What happens, in order:
+
+1. A "Tap to open" gate over the drifting photo wall.
+   The tap is required, not decoration: a phone will not start sound before one, and iOS never does on a first visit.
+2. The song (`public/monthsary/ngiti.mp3`, copied from Evently so the two can change apart) starts, and the wall is pulled into a tornado.
+3. The tiles leave the funnel left to right and land as "Happy Monthsary Langga ♥", over a pink glow traced from the same letters.
+4. Fireworks start, the cake builds itself underneath, and the candle lights.
+5. Tapping the candle blows it out: a burst of fireworks, falling hearts, a letter card over the dimmed cake, then "Watch again".
+
+**Photos.**
+`/api/monthsary/photos` reads the same Cloudinary listing and cache as the gallery, and returns only each image's id and placeholder colour.
+Titles, clients, years and tags stay behind the PIN; video is left out.
+The page deals a fresh random 64 into one texture atlas per visit and repeats them across every tile.
+With no Cloudinary configured (a local `.env` without the secret) the list is empty and the tiles fall back to blush squares with hearts, so the page still works.
+
+**Rendering.**
+Every tile is one instance of a single quad, so the 1,000-1,600 tiles are one draw call.
+Every pose is a pure function of two clocks (`utils/monthsary/choreography.ts`), which is what lets the tests step through the whole show frame by frame and assert no tile ever jumps while visible.
+The words are traced into a canvas and sampled on a grid sized so a phone's letters get the finest one: an iPhone is the main audience.
+The glow behind them uses a canvas shadow, not `ctx.filter`, which Safari does not support.
+
+**Cake.**
+Marco Barría's "new cake" from CodePen, under MIT (see `THIRD-PARTY-NOTICES.md`), recoloured to strawberry.
+Its path data is in `utils/monthsary/cake.json` verbatim apart from whitespace.
+
+**Reduced motion** skips the tornado and the fireworks: the words, the finished cake and a still flame.
+**No WebGL** sets the words in type instead of tiles; everything else is the same.
+
+To change the letter shown after the candle, edit `MESSAGE` at the top of `pages/monthsary.vue`: `title` is its heading, `body` the rest, and an empty `body` shows no letter.
 
 ## Evently shared worlds (`/evently/create.html`)
 
