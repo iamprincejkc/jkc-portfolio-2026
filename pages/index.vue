@@ -77,7 +77,7 @@ const more = SERVICES.filter((s) => !s.featured)
           </h1>
           <p class="lp-hero__lead">
             I build fast landing pages for small businesses, connected to your Facebook page and Messenger, so anyone who
-            finds you can see what you offer and message, call or book you in one tap. And when you need more, I build the
+            finds you can see what you offer and message or call you in one tap. And when you need more, I build the
             system behind it too.
           </p>
           <div class="lp-hero__actions">

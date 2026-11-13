@@ -78,14 +78,14 @@ export const SERVICES: Service[] = [
   {
     icon: 'messenger',
     title: 'Facebook and Messenger, connected',
-    body: 'Your website and your Facebook page working together, so every visitor is one tap away from a conversation, and every ad peso is measured.',
-    points: ['Messenger chat button on your site', 'Meta Pixel for your Facebook ads', 'Facebook reviews and posts on your page', 'Lead forms that land in your inbox'],
+    body: 'Your website and your Facebook page linked both ways, with a Messenger button so every visitor is one tap away from a conversation with your page.',
+    points: ['A Messenger button that opens a chat with your page', 'Your website and Facebook page linked both ways', 'Meta Pixel to measure your Facebook ads', 'Contact forms that arrive in your email'],
     featured: true,
   },
   {
     icon: 'calendar',
     title: 'Booking, orders and inquiries',
-    body: 'Appointment requests, order forms and quote requests that arrive in your email, Messenger or a Google Sheet, with payment details or a payment link where you need them.',
+    body: 'Appointment requests, order forms and quote requests that arrive in your email or a Google Sheet, with payment details or a payment link where you need them.',
     points: [],
   },
   {
@@ -202,7 +202,7 @@ export const FAQS: Faq[] = [
   },
   {
     q: 'How long does it take?',
-    a: 'A landing page usually takes one to two weeks from the day you send your photos and details. Booking forms and Facebook integrations add a few days. Bigger systems are planned with you in stages.',
+    a: 'A landing page usually takes one to two weeks from the day you send your photos and details. A booking form, a Messenger button or the Meta Pixel adds a day or two. Bigger systems are planned with you in stages.',
   },
   {
     q: 'Will I pay for hosting every month?',

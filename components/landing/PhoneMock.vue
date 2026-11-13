@@ -14,7 +14,7 @@
     <div
       class="pm__stage"
       role="img"
-      aria-label="Example: a clinic's landing page on a phone, with buttons to book on Messenger, call, and get directions, and a Messenger chat open."
+      aria-label="Example: a clinic's landing page on a phone, with buttons to message on Messenger, call, and get directions, and the Messenger chat that the button opens."
     >
       <div class="pm__phone" aria-hidden="true">
         <div class="pm__screen">
@@ -38,13 +38,13 @@
           <div class="pm__body">
             <div class="pm__meta">
               <span class="pm__stars">★★★★★</span>
-              <span>4.9 · 212 Facebook reviews</span>
+              <span>4.9 · 212 reviews</span>
             </div>
             <div class="pm__open"><span class="pm__dot" />Open today · 9:00 AM - 6:00 PM</div>
 
             <div class="pm__cta pm__cta--fb">
               <LandingIcon name="messenger" :size="15" />
-              Book on Messenger
+              Message us on Messenger
             </div>
             <div class="pm__row">
               <div class="pm__cta">
@@ -86,7 +86,7 @@
         <span class="pm__g-meta">★ 4.9 · Open now · lumendental.com</span>
       </div>
     </div>
-    <figcaption class="pm__caption">Example: a landing page for a clinic, linked to its Facebook page.</figcaption>
+    <figcaption class="pm__caption">Example: a clinic's landing page. Its Messenger button opens a chat with the clinic's Facebook page.</figcaption>
   </figure>
 </template>
 

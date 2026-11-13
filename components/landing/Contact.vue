@@ -155,7 +155,7 @@ const messenger = CONTACT.messenger ? `https://m.me/${CONTACT.messenger}` : ''
             required
             rows="5"
             maxlength="5000"
-            placeholder="e.g. I run a small salon with only a Facebook page. I'd like a simple website where customers can see our services and book on Messenger."
+            placeholder="e.g. I run a small salon with only a Facebook page. I'd like a simple website where customers can see our services and message us on Messenger."
           />
         </label>
 
