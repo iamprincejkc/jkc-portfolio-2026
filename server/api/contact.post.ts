@@ -30,6 +30,9 @@ const WINDOW_SECONDS = 10 * 60
 /** Deliberately loose - this is a sanity check, not address validation. */
 const EMAIL_PATTERN = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 
+/** Also loose: an optional plus, then digits with the usual spaces, dashes and brackets. */
+const PHONE_PATTERN = /^\+?[\d\s().-]{7,25}$/
+
 export default defineEventHandler(async (event) => {
   const config = useRuntimeConfig()
 
@@ -67,18 +70,30 @@ export default defineEventHandler(async (event) => {
   const name = text(body?.name, 200)
   const email = text(body?.email, 320)
   const message = text(body?.message, 5000)
+  // A business owner may only want a call back, so a phone number can stand
+  // in for the email. The business name is optional context.
+  const phone = text(body?.phone, 40)
+  const business = text(body?.business, 200)
 
-  if (!name || !email || !message) {
-    throw createError({ statusCode: 400, statusMessage: 'Please fill in every field.' })
+  if (!name || !message) {
+    throw createError({ statusCode: 400, statusMessage: 'Please add your name and a short message.' })
   }
-  if (!EMAIL_PATTERN.test(email)) {
+  if (!email && !phone) {
+    throw createError({ statusCode: 400, statusMessage: 'Please leave an email or a phone number so I can reply.' })
+  }
+  if (email && !EMAIL_PATTERN.test(email)) {
     throw createError({ statusCode: 400, statusMessage: 'That email address looks wrong.' })
+  }
+  if (phone && !PHONE_PATTERN.test(phone)) {
+    throw createError({ statusCode: 400, statusMessage: 'That phone number looks wrong.' })
   }
 
   const payload: ContactMessage = {
     name,
     email,
     message,
+    business,
+    phone,
     // Rendered in JKC's own timezone; toUTCString would show GMT, which is
     // never the time he actually received it.
     receivedAt: formatReceived(new Date()),
@@ -105,8 +120,9 @@ export default defineEventHandler(async (event) => {
         subject: `${name}: ${subjectSnippet(message)}`,
         html: renderContactEmail(payload),
         text: renderContactText(payload),
-        // Replying reaches the sender rather than our own address.
-        reply_to: email,
+        // Replying reaches the sender rather than our own address. With only a
+        // phone number there is no one to reply to, and the email says so.
+        ...(email ? { reply_to: email } : {}),
       },
     })
 
@@ -148,7 +164,7 @@ export default defineEventHandler(async (event) => {
    * in the form and cause one message from this domain. The per-IP limit above
    * is what keeps that from being useful for amplification.
    */
-  if (sender === from) {
+  if (sender === from && email) {
     try {
       await $fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -180,7 +196,9 @@ export default defineEventHandler(async (event) => {
       body: new URLSearchParams({
         'form-name': 'contact',
         name,
+        business,
         email,
+        phone,
         message,
       }).toString(),
     })

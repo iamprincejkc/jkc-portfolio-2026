@@ -10,8 +10,10 @@
  * data, not pages - they have no HTML, no title and nothing to rank, so
  * listing them would spend the crawl budget for this site on JSON.
  */
-const PUBLIC_ROUTES = ['/', '/about', '/qr-generator', '/n8n', '/public-api']
+const PUBLIC_ROUTES = ['/', '/me', '/about', '/qr-generator', '/n8n', '/public-api']
 
+// No <changefreq> or <priority>: Google ignores both and reads only <lastmod>,
+// which is the build date - the pages are prerendered, so a build is when they change.
 export default defineEventHandler((event) => {
   const siteUrl = String(useRuntimeConfig().public.siteUrl ?? '').replace(/\/$/, '')
   const lastmod = new Date().toISOString().split('T')[0]
@@ -22,8 +24,6 @@ export default defineEventHandler((event) => {
     (path) => `  <url>
     <loc>${siteUrl}${path}</loc>
     <lastmod>${lastmod}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>1.0</priority>
   </url>`,
   ).join('\n')
 

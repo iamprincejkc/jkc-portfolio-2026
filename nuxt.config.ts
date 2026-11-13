@@ -31,15 +31,28 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'en' },
       // Searchers look for the person, not the initials.
-      title: 'Jan Kevin Cadampog — .NET & Angular Developer',
+      title: 'Jan Kevin Cadampog - Senior Software Engineer',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
-        { name: 'theme-color', content: '#0a0a0a' },
+        // Keyed so the landing layout can replace it with light/dark values.
+        { key: 'theme-color', name: 'theme-color', content: '#0a0a0a' },
         { name: 'author', content: 'Jan Kevin Cadampog' },
       ],
       link: [
-        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico' },
+        /*
+         * The "J." mark, rebuilt as a vector from favicon.ico by
+         * scripts/make-icons.py. Google Search shows a site's favicon in its
+         * results and wants it square and a multiple of 48px, which the 76px
+         * .ico is not, so the PNGs carry those sizes. The .ico stays for
+         * anything that asks for /favicon.ico by name.
+         */
+        { rel: 'icon', type: 'image/x-icon', href: '/favicon.ico', sizes: '76x76' },
+        { rel: 'icon', type: 'image/png', href: '/favicon-48x48.png', sizes: '48x48' },
+        { rel: 'icon', type: 'image/png', href: '/favicon-96x96.png', sizes: '96x96' },
+        { rel: 'icon', type: 'image/svg+xml', href: '/icon.svg' },
+        { rel: 'apple-touch-icon', href: '/apple-touch-icon.png', sizes: '180x180' },
+        { rel: 'manifest', href: '/site.webmanifest' },
         /*
          * Fontshare serves the CSS from api. and the font files from cdn.
          * Without the second preconnect the fonts pay a fresh DNS + TLS
@@ -49,7 +62,7 @@ export default defineNuxtConfig({
         { rel: 'preconnect', href: 'https://api.fontshare.com' },
         { rel: 'preconnect', href: 'https://cdn.fontshare.com', crossorigin: '' },
         // Last.fm album art for the now-playing card.
-        { rel: 'dns-prefetch', href: 'https://lastfm.freetls.fastly.net' },
+        { rel: 'dns-prefetch', href: 'https://lastfm-img.freetls.fastly.net' },
         {
           rel: 'stylesheet',
           href: 'https://api.fontshare.com/v2/css?f[]=general-sans@500,600,400&f[]=melodrama@500,400&display=swap',
@@ -60,6 +73,20 @@ export default defineNuxtConfig({
 
   // Lenis/GSAP need the client, but Nuxt SSR for first paint is fine.
   ssr: true,
+
+  hooks: {
+    /*
+     * No blanket <link rel="prefetch"> for every dynamic chunk. Nuxt adds one
+     * per lazy chunk to every page, so the business landing page at / was
+     * pulling ~200 kB it never runs - GSAP, ScrollTrigger and other pages'
+     * code - over the mobile data its visitors are on. NuxtLink still
+     * prefetches a route's chunks when a link to it scrolls into view, which
+     * is the prefetch that actually speeds up a navigation.
+     */
+    'build:manifest': (manifest) => {
+      for (const chunk of Object.values(manifest)) chunk.prefetch = false
+    },
+  },
 
   /*
    * Values here are overridden at runtime by environment variables, using
@@ -137,6 +164,15 @@ export default defineNuxtConfig({
        * redeploy, not just a restart.
        */
       siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'https://iamprincejkc.netlify.app',
+      /*
+       * Google Tag Manager for the business landing page only, and only on
+       * these hosts (comma-separated), so dev servers and deploy previews never
+       * count as visits. A container ID is public by nature. See
+       * utils/landing/analytics.ts. Override with NUXT_PUBLIC_GTM_ID and
+       * NUXT_PUBLIC_GTM_HOSTS; an empty ID turns it off.
+       */
+      gtmId: 'GTM-KB5PL65K',
+      gtmHosts: 'iamjkc.space,www.iamjkc.space',
     },
   },
 
@@ -152,6 +188,8 @@ export default defineNuxtConfig({
      * The about page is static prose plus the family photos - no per-request
      * state at all - so it is baked at build time alongside the home page.
      */
+    '/me': { prerender: true },
+
     '/about': { prerender: true },
 
     /*
@@ -275,7 +313,7 @@ export default defineNuxtConfig({
     // build time and served straight from the CDN.
     prerender: {
       crawlLinks: false,
-      routes: ['/', '/about', '/qr-generator', '/n8n', '/public-api', '/monthsary', '/robots.txt', '/sitemap.xml'],
+      routes: ['/', '/me', '/about', '/qr-generator', '/n8n', '/public-api', '/monthsary', '/robots.txt', '/sitemap.xml'],
     },
   },
 })

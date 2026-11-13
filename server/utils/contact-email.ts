@@ -25,8 +25,13 @@ const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial
 
 export type ContactMessage = {
   name: string
+  /** Empty when they left only a phone number. One of the two is always set. */
   email: string
   message: string
+  /** Optional: the business they are writing about. */
+  business?: string
+  /** Optional: a number to call or message back on. */
+  phone?: string
   /** Already formatted for display; see formatReceived. */
   receivedAt: string
   siteUrl: string
@@ -64,6 +69,15 @@ export function formatReceived(date: Date, timeZone = 'Asia/Manila'): string {
   } catch {
     return date.toUTCString()
   }
+}
+
+/**
+ * A phone number as a `tel:` target: digits and a leading plus only, so
+ * whatever spacing or dashes they typed still dials.
+ */
+export function telHref(phone: string): string {
+  const trimmed = phone.trim()
+  return `tel:${trimmed.startsWith('+') ? '+' : ''}${trimmed.replace(/\D/g, '')}`
 }
 
 /** First word of a name, for a greeting. Falls back to something neutral. */
@@ -219,6 +233,16 @@ export function renderContactEmail(msg: ContactMessage): string {
   const host = siteHost(msg.siteUrl)
   const first = escapeHtml(firstName(msg.name))
   const mailto = `mailto:${encodeURI(msg.email)}?subject=${encodeURIComponent(`Re: your message via ${host}`)}`
+  // No email means they asked to be called or messaged back.
+  const action = msg.email ? button(mailto, `Reply to ${first}`) : button(telHref(msg.phone ?? ''), `Call ${first}`)
+  const link = (href: string, text: string) =>
+    `<a href="${href}" style="color:${INK};text-decoration:underline;">${escapeHtml(text)}</a>`
+  const rows = [
+    msg.business ? detail('Business', escapeHtml(msg.business)) : '',
+    msg.email ? detail('Email', link(`mailto:${encodeURI(msg.email)}`, msg.email)) : '',
+    msg.phone ? detail('Phone', link(telHref(msg.phone), msg.phone)) : '',
+    detail('Received', escapeHtml(msg.receivedAt)),
+  ].join('')
 
   const inner = `
   ${card(`
@@ -226,19 +250,15 @@ export function renderContactEmail(msg: ContactMessage): string {
       <div style="padding:0 0 24px;font:600 22px/1.3 ${SANS};letter-spacing:-0.01em;color:${INK};">${escapeHtml(msg.name)} got in touch</div>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-bottom:1px solid ${LINE};">
-        ${detail(
-          'Email',
-          `<a href="mailto:${encodeURI(msg.email)}" style="color:${INK};text-decoration:underline;">${escapeHtml(msg.email)}</a>`,
-        )}
-        ${detail('Received', escapeHtml(msg.receivedAt))}
+        ${rows}
       </table>
 
       <div style="padding:24px 0 0;">${quote(msg.message)}</div>
-      <div style="padding:28px 0 0;">${button(mailto, `Reply to ${first}`)}</div>
+      <div style="padding:28px 0 0;">${action}</div>
   `)}
   ${footnote(
     `Sent from the contact form on <a href="${escapeHtml(msg.siteUrl)}" style="color:${MUTED};text-decoration:underline;">${escapeHtml(host)}</a>.
-    Replying to this email goes straight to ${first}.`,
+    ${msg.email ? `Replying to this email goes straight to ${first}.` : `${first} left no email address, so call or message them back.`}`,
   )}`
 
   return shell(`New message from ${msg.name}`, `${msg.name}: ${subjectSnippet(msg.message, 90)}`, inner)
@@ -248,14 +268,18 @@ export function renderContactText(msg: ContactMessage): string {
   return [
     `NEW ENQUIRY — ${siteHost(msg.siteUrl)}`,
     '',
-    `From:    ${msg.name}`,
-    `Email:   ${msg.email}`,
+    `From:     ${msg.name}`,
+    ...(msg.business ? [`Business: ${msg.business}`] : []),
+    ...(msg.email ? [`Email:    ${msg.email}`] : []),
+    ...(msg.phone ? [`Phone:    ${msg.phone}`] : []),
     '',
     'Message:',
     msg.message,
     '',
     '--',
-    `Received ${msg.receivedAt}. Reply directly to reach ${firstName(msg.name)}.`,
+    msg.email
+      ? `Received ${msg.receivedAt}. Reply directly to reach ${firstName(msg.name)}.`
+      : `Received ${msg.receivedAt}. No email given: call or message ${firstName(msg.name)} back.`,
   ].join('\n')
 }
 
@@ -281,7 +305,7 @@ export function renderAutoReply(msg: ContactMessage): string {
 
       <div style="margin:28px 0 0;padding:20px 0 0;border-top:1px solid ${LINE};">
         <div style="font:600 14px/1.5 ${SANS};color:${INK};">Jan Kevin Cadampog</div>
-        <div style="font:400 13px/1.5 ${SANS};color:${MUTED};">Software Engineer &middot; Cebu City</div>
+        <div style="font:400 13px/1.5 ${SANS};color:${MUTED};">Senior Software Engineer &middot; Cebu City</div>
         <div style="padding-top:8px;font:400 13px/1.5 ${SANS};">
           <a href="${escapeHtml(msg.siteUrl)}" style="color:${INK};text-decoration:underline;">${escapeHtml(host)}</a>
         </div>
@@ -304,7 +328,7 @@ export function renderAutoReplyText(msg: ContactMessage): string {
     '',
     '--',
     'Jan Kevin Cadampog',
-    'Software Engineer, Cebu City',
+    'Senior Software Engineer, Cebu City',
     msg.siteUrl,
     '',
     'This is an automatic confirmation, but replying to it does reach me.',

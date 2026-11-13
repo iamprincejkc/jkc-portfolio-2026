@@ -1,10 +1,15 @@
-import Lenis from 'lenis'
-import { gsap } from 'gsap'
-import { ScrollTrigger } from 'gsap/ScrollTrigger'
+import { skipsMotion } from '~/utils/motion'
 
-export default defineNuxtPlugin(() => {
+/** Loaded as its own chunk, and not at all on pages that never animate. See utils/motion.ts. */
+export default defineNuxtPlugin(async () => {
   if (import.meta.server) return
+  if (skipsMotion(window.location.pathname)) return
 
+  const [{ default: Lenis }, { gsap }, { ScrollTrigger }] = await Promise.all([
+    import('lenis'),
+    import('gsap'),
+    import('gsap/ScrollTrigger'),
+  ])
   gsap.registerPlugin(ScrollTrigger)
 
   /*

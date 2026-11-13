@@ -3,7 +3,7 @@ const { siteUrl } = useRuntimeConfig().public
 const route = useRoute()
 
 const DESCRIPTION =
-  'Jan Kevin Cadampog (JKC) — full-stack developer in Cebu City building enterprise web applications with .NET and Angular. Five years shipping production software.'
+  'Jan Kevin Cadampog (JKC), Senior Software Engineer in Cebu City. Five years building websites and enterprise systems with .NET and Angular for companies in Japan, New Zealand and the Philippines.'
 
 /** Absolute URL for the page being rendered - canonical and og:url need one. */
 const canonical = computed(() => new URL(route.path, siteUrl as string).href)
@@ -13,13 +13,13 @@ useSeoMeta({
   description: DESCRIPTION,
   ogType: 'website',
   ogSiteName: 'Jan Kevin Cadampog',
-  ogTitle: 'Jan Kevin Cadampog — .NET & Angular Developer',
+  ogTitle: 'Jan Kevin Cadampog - Senior Software Engineer',
   ogDescription: DESCRIPTION,
   ogImage: ogImage,
   ogImageAlt: 'Jan Kevin Cadampog',
   ogUrl: canonical,
   twitterCard: 'summary_large_image',
-  twitterTitle: 'Jan Kevin Cadampog — .NET & Angular Developer',
+  twitterTitle: 'Jan Kevin Cadampog - Senior Software Engineer',
   twitterDescription: DESCRIPTION,
   twitterImage: ogImage,
 })
@@ -30,16 +30,20 @@ useHead({
     {
       // Person schema: this is what lets a search engine connect the name to
       // the job title, location and social profiles rather than guessing.
+      // Keyed: the landing page (pages/index.vue) replaces it with a fuller
+      // graph that holds this same Person under the same @id.
       type: 'application/ld+json',
+      key: 'ld-person',
       innerHTML: computed(() =>
         JSON.stringify({
           '@context': 'https://schema.org',
           '@type': 'Person',
+          '@id': `${String(siteUrl).replace(/\/$/, '')}/#person`,
           name: 'Jan Kevin Cadampog',
           alternateName: 'JKC',
           url: siteUrl,
           image: ogImage.value,
-          jobTitle: 'Software Engineer',
+          jobTitle: 'Senior Software Engineer',
           description: DESCRIPTION,
           email: 'mailto:princejankevin@gmail.com',
           address: {

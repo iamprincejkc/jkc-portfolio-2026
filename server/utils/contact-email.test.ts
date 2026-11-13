@@ -9,6 +9,7 @@ import {
   renderContactEmail,
   renderContactText,
   siteHost,
+  telHref,
   subjectSnippet,
   type ContactMessage,
 } from './contact-email'
@@ -196,5 +197,41 @@ describe('lapsed sending domain', () => {
     expect(fallbackSender('"Jan Kevin" <hi@iamjkc.space>')).toBe(`"Jan Kevin" <${RESEND_TEST_SENDER}>`)
     // A bare address gets a name, so the inbox does not just say "onboarding".
     expect(fallbackSender('hello@iamjkc.space')).toBe(`Portfolio contact <${RESEND_TEST_SENDER}>`)
+  })
+})
+
+describe('business enquiries', () => {
+  it('shows the business and phone when they are given', () => {
+    const msg = { ...base, business: 'Smile Dental Mandaue', phone: '0917 123 4567' }
+    const html = renderContactEmail(msg)
+    expect(html).toContain('Smile Dental Mandaue')
+    expect(html).toContain('href="tel:09171234567"')
+    const text = renderContactText(msg)
+    expect(text).toContain('Business: Smile Dental Mandaue')
+    expect(text).toContain('Phone:    0917 123 4567')
+  })
+
+  it('offers a call instead of a reply when there is no email', () => {
+    const html = renderContactEmail({ ...base, email: '', phone: '+63 917 123 4567' })
+    expect(html).toContain('Call Ada')
+    expect(html).toContain('href="tel:+639171234567"')
+    expect(html).not.toContain('Reply to Ada')
+    expect(html).not.toContain('mailto:')
+    expect(renderContactText({ ...base, email: '', phone: '0917' })).not.toContain('Email:')
+  })
+
+  it('leaves out the rows nobody filled in', () => {
+    const html = renderContactEmail(base)
+    expect(html).not.toContain('>Business<')
+    expect(html).not.toContain('>Phone<')
+  })
+
+  it('dials whatever spacing and dashes were typed', () => {
+    expect(telHref('0917-123-4567')).toBe('tel:09171234567')
+    expect(telHref(' +63 (917) 123 4567 ')).toBe('tel:+639171234567')
+  })
+
+  it('signs the confirmation as a Senior Software Engineer', () => {
+    expect(renderAutoReply(base)).toContain('Senior Software Engineer')
   })
 })

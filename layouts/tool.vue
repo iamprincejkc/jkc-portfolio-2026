@@ -35,7 +35,7 @@ const theme = computed(() => (route.meta.toolTheme ? `tool-chrome--${route.meta.
     <a href="#tool-main" class="tool-skip">Skip to content</a>
 
     <header class="tool-header">
-      <NuxtLink to="/" class="tool-header__back" title="Back to the portfolio">
+      <NuxtLink to="/me" class="tool-header__back" title="Back to the portfolio">
         <span class="tool-header__brand">JKC</span>
         <span class="tool-header__sep" aria-hidden="true">/</span>
         <span class="tool-header__title">{{ title }}</span>

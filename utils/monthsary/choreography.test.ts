@@ -122,15 +122,23 @@ describe('poseAt', () => {
     }
     let previous = tiles.map((tile) => onScreen(poseAt(tile, null, 0, stage)))
 
+    /*
+     * The biggest visible move, asserted once at the end. One expect() per
+     * tile per frame is hundreds of thousands of calls, which took this test
+     * past the 5 s timeout whenever the suite ran in parallel.
+     */
+    let worst = { moved: 0, tile: -1, wall: 0 }
     for (let wall = dt; wall < tap + FORMED + 2; wall += dt) {
       const show = wall < tap ? null : wall - tap
       const now = tiles.map((tile) => onScreen(poseAt(tile, show, wall, stage)))
       for (let i = 0; i < tiles.length; i += 1) {
         // A wrap is a jump of a whole screen, and is only allowed out of sight.
+        if (!now[i].visible && !previous[i].visible) continue
         const moved = Math.hypot(now[i].x - previous[i].x, now[i].y - previous[i].y)
-        if (now[i].visible || previous[i].visible) expect(moved).toBeLessThan(90)
+        if (moved > worst.moved) worst = { moved, tile: i, wall }
       }
       previous = now
     }
+    expect(worst.moved, `tile ${worst.tile} at ${worst.wall.toFixed(3)} s`).toBeLessThan(90)
   })
 })

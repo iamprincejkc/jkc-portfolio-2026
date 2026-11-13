@@ -14,13 +14,16 @@
       here over fetch.
 
       Every field name below must match the real form in
-      components/ContactSection.vue.
+      components/ContactSection.vue and components/landing/Contact.vue (which
+      also sends business and phone).
     -->
     <form name="contact" data-netlify="true" netlify-honeypot="bot-field" hidden>
       <input type="hidden" name="form-name" value="contact" />
       <input type="text" name="bot-field" />
       <input type="text" name="name" />
+      <input type="text" name="business" />
       <input type="email" name="email" />
+      <input type="tel" name="phone" />
       <textarea name="message"></textarea>
     </form>
   </body>

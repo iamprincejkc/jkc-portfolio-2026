@@ -38,20 +38,22 @@
 /** Origins this site legitimately pulls from. Keep in step with netlify.toml. */
 const CSP = [
   "default-src 'self'",
-  // See the note above before touching this line.
-  "script-src 'self' 'unsafe-inline'",
+  // See the note above before touching this line. googletagmanager.com is the
+  // landing page's Tag Manager container; with *.google-analytics.com and
+  // *.google.com below, these are the hosts Google lists for GA4 (utils/landing/analytics.ts).
+  "script-src 'self' 'unsafe-inline' https://www.googletagmanager.com",
   // Vue writes component styles inline; Nuxt inlines critical CSS.
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://api.fontshare.com",
   "font-src 'self' https://fonts.gstatic.com https://cdn.fontshare.com",
   // Cloudinary serves the gallery; Last.fm serves album art for the hero card;
   // R2 serves the vault's video posters.
-  "img-src 'self' data: blob: https://res.cloudinary.com https://lastfm.freetls.fastly.net https://*.r2.cloudflarestorage.com",
+  "img-src 'self' data: blob: https://res.cloudinary.com https://lastfm.freetls.fastly.net https://lastfm-img.freetls.fastly.net https://*.r2.cloudflarestorage.com https://www.googletagmanager.com https://*.google-analytics.com",
   // Uploads go straight to Cloudinary, and vault video straight to R2, each
   // with a signature minted server-side.
   // The wss:// hosts are the Nostr relays Evently's shared worlds use to find
   // each other for "walk together" - pinned in Evently's src/live/room.ts, and
   // the three lists must change together.
-  "connect-src 'self' https://api.cloudinary.com https://res.cloudinary.com https://*.r2.cloudflarestorage.com wss://nos.lol wss://relay.primal.net wss://nostr.mom wss://purplerelay.com",
+  "connect-src 'self' https://www.googletagmanager.com https://*.google-analytics.com https://*.google.com https://api.cloudinary.com https://res.cloudinary.com https://*.r2.cloudflarestorage.com wss://nos.lol wss://relay.primal.net wss://nostr.mom wss://purplerelay.com",
   // `blob:` for previewing a queued clip before upload; R2 for vault playback.
   "media-src 'self' blob: https://*.r2.cloudflarestorage.com",
   "worker-src 'self' blob:",
