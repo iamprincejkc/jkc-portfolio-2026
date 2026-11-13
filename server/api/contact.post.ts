@@ -1,4 +1,5 @@
 import {
+  autoReplySubject,
   fallbackSender,
   formatReceived,
   isUnverifiedDomain,
@@ -7,6 +8,7 @@ import {
   renderContactEmail,
   renderContactText,
   subjectSnippet,
+  withSenderName,
   type ContactMessage,
 } from '../utils/contact-email'
 import { consume } from '../utils/rate-limit'
@@ -39,7 +41,8 @@ export default defineEventHandler(async (event) => {
   // Coerced: Nuxt parses env with `destr`, so values are not guaranteed strings.
   const apiKey = String(config.resendApiKey ?? '')
   const to = String(config.contactToEmail ?? '')
-  const from = String(config.contactFromEmail ?? '')
+  // Sent as "Jan Kevin Cadampog <address>" so the inbox shows a person.
+  const from = withSenderName(String(config.contactFromEmail ?? ''))
 
   if (!apiKey || !to || !from) {
     throw createError({ statusCode: 503, statusMessage: 'Contact is not configured.' })
@@ -172,7 +175,7 @@ export default defineEventHandler(async (event) => {
         body: {
           from,
           to: [email],
-          subject: 'Thanks for getting in touch',
+          subject: autoReplySubject(name),
           html: renderAutoReply(payload),
           text: renderAutoReplyText(payload),
           // If they reply to the confirmation, it should reach a person.

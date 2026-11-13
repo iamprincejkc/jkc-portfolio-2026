@@ -107,7 +107,7 @@ export function landingGraph(base: string) {
         name: 'Jan Kevin Cadampog',
         alternateName: 'JKC',
         jobTitle: 'Senior Software Engineer',
-        url: `${base}/me`,
+        url: `${base}/me/`,
         image: `${base}/images/main.webp`,
         email: `mailto:${CONTACT.email}`,
         address: { '@type': 'PostalAddress', addressLocality: BASE.city, addressCountry: BASE.countryCode },

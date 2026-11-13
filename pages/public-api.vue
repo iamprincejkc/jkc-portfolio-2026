@@ -20,7 +20,7 @@ useHead({
     },
   ],
   link: [
-    { rel: 'canonical', href: `${siteUrl}/public-api` },
+    { rel: 'canonical', href: `${siteUrl}/public-api/` },
     /*
      * The catalog is deliberately not preloaded. `catalog.json` revalidates on
      * every visit, and a revalidating response is not served out of the

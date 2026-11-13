@@ -37,7 +37,7 @@ const links = [
 
       <nav class="lp-header__nav" aria-label="Sections">
         <a v-for="l in links" :key="l.href" :href="l.href">{{ l.label }}</a>
-        <a href="/me">About me</a>
+        <a href="/me/">About me</a>
       </nav>
 
       <div class="lp-header__actions">

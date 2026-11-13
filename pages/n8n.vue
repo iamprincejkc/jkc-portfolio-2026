@@ -20,7 +20,7 @@ useHead({
     },
   ],
   link: [
-    { rel: 'canonical', href: `${siteUrl}/n8n` },
+    { rel: 'canonical', href: `${siteUrl}/n8n/` },
     /*
      * The catalog is not preloaded, and that is a decision rather than an
      * omission.

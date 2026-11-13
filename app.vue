@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { pageUrl } from '~/utils/page-url'
 const { siteUrl } = useRuntimeConfig().public
 const route = useRoute()
 
@@ -6,7 +7,7 @@ const DESCRIPTION =
   'Jan Kevin Cadampog (JKC), Senior Software Engineer in Cebu City. Five years building websites and enterprise systems with .NET and Angular for companies in Japan, New Zealand and the Philippines.'
 
 /** Absolute URL for the page being rendered - canonical and og:url need one. */
-const canonical = computed(() => new URL(route.path, siteUrl as string).href)
+const canonical = computed(() => pageUrl(String(siteUrl), route.path))
 const ogImage = computed(() => new URL('/images/main.webp', siteUrl as string).href)
 
 useSeoMeta({

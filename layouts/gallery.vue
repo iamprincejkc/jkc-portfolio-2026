@@ -35,7 +35,7 @@ async function lock() {
         >
           Upload
         </NuxtLink>
-        <NuxtLink to="/me" class="eyebrow hover:text-primary transition-colors duration-fast">
+        <NuxtLink to="/me/" class="eyebrow hover:text-primary transition-colors duration-fast">
           Portfolio
         </NuxtLink>
         <button

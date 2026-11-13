@@ -13,10 +13,10 @@ import { trackLanding } from '~/composables/useLandingAnalytics'
       </div>
 
       <nav class="lp-footer__links" aria-label="More">
-        <a href="/me">About me</a>
+        <a href="/me/">About me</a>
         <a :href="CONTACT.linkedin" target="_blank" rel="noopener noreferrer">LinkedIn</a>
         <a :href="CONTACT.github" target="_blank" rel="noopener noreferrer">GitHub</a>
-        <a href="/qr-generator">Free QR code maker</a>
+        <a href="/qr-generator/">Free QR code maker</a>
         <a :href="CONTACT.emailHref" @click="trackLanding({ event: 'contact_click', method: 'email' })">{{ CONTACT.email }}</a>
       </nav>
     </div>

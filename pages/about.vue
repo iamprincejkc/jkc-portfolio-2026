@@ -24,7 +24,7 @@ useSeoMeta({
   description: DESCRIPTION,
   ogTitle: 'About — Jan Kevin Cadampog',
   ogDescription: DESCRIPTION,
-  ogUrl: `${siteUrl}/about`,
+  ogUrl: `${siteUrl}/about/`,
   twitterTitle: 'About — Jan Kevin Cadampog',
   twitterDescription: DESCRIPTION,
 })

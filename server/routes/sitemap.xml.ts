@@ -1,3 +1,5 @@
+import { pageUrl } from '../../utils/page-url'
+
 /**
  * sitemap.xml
  *
@@ -22,7 +24,7 @@ export default defineEventHandler((event) => {
 
   const urls = PUBLIC_ROUTES.map(
     (path) => `  <url>
-    <loc>${siteUrl}${path}</loc>
+    <loc>${pageUrl(siteUrl, path)}</loc>
     <lastmod>${lastmod}</lastmod>
   </url>`,
   ).join('\n')

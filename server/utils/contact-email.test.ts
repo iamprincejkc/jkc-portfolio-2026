@@ -10,6 +10,9 @@ import {
   renderContactText,
   siteHost,
   telHref,
+  withSenderName,
+  autoReplySubject,
+  renderAutoReplyText,
   subjectSnippet,
   type ContactMessage,
 } from './contact-email'
@@ -67,8 +70,10 @@ describe('escaping', () => {
     // What matters is that no sender-supplied tag survives as a tag. The text
     // "onerror=" may well appear escaped in the body - inert, because the
     // angle brackets around it are entities, so it is never an attribute.
+    // The email has its own <img> tags (logo, photo), so look for the injected one.
     expect(html).not.toContain('<script>')
-    expect(html).not.toContain('<img ')
+    expect(html).not.toContain('<img src=x')
+    expect(html).not.toMatch(/<img[^>]*onerror/)
     expect(html).toContain('&lt;script&gt;')
     expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;')
   })
@@ -141,7 +146,8 @@ describe('structure', () => {
 
   it('quotes the message back in the auto-reply', () => {
     const html = renderAutoReply(base)
-    expect(html).toContain('Thanks, Ada.')
+    expect(html).toContain('Thanks for reaching out, <span')
+    expect(html).toContain('Ada.</span>')
     expect(html).toContain('Hello there')
   })
 
@@ -233,5 +239,45 @@ describe('business enquiries', () => {
 
   it('signs the confirmation as a Senior Software Engineer', () => {
     expect(renderAutoReply(base)).toContain('Senior Software Engineer')
+  })
+})
+
+describe('branding', () => {
+  it('sends under a person, not a bare address', () => {
+    expect(withSenderName('contact@iamjkc.space')).toBe('Jan Kevin Cadampog <contact@iamjkc.space>')
+    expect(withSenderName('JKC <contact@iamjkc.space>')).toBe('JKC <contact@iamjkc.space>')
+    expect(withSenderName('')).toBe('')
+  })
+
+  it('greets by first name in the confirmation subject', () => {
+    expect(autoReplySubject('Ada Lovelace')).toBe('Thanks for your message, Ada')
+  })
+
+  it('loads the logo and photo from the site the message came from, as PNG and JPEG', () => {
+    const html = renderAutoReply({ ...base, siteUrl: 'https://example.dev' })
+    expect(html).toContain('src="https://example.dev/icon-192.png"')
+    expect(html).toContain('src="https://example.dev/images/email/headshot.jpg"')
+    expect(html).not.toMatch(/\.(webp|svg)"/)
+  })
+
+  it('tags the link to the work so GA4 can attribute the visit', () => {
+    const html = renderAutoReply(base)
+    expect(html).toContain('utm_source=contact_auto_reply')
+    expect(renderAutoReplyText(base)).toContain('utm_medium=email')
+  })
+
+  it('says what happens next, in both parts', () => {
+    expect(renderAutoReply(base)).toContain('What happens next')
+    expect(renderAutoReplyText(base)).toContain('1. I look at your business.')
+  })
+
+  it('names the business in the notification headline when there is one', () => {
+    expect(renderContactEmail({ ...base, business: 'Smile Dental' })).toContain('from</span> Smile Dental')
+  })
+
+  it('never uses an em dash in any part', () => {
+    for (const out of [renderContactEmail(base), renderContactText(base), renderAutoReply(base), renderAutoReplyText(base)]) {
+      expect(out).not.toContain('\u2014')
+    }
   })
 })

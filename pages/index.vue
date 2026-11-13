@@ -170,7 +170,7 @@ const more = SERVICES.filter((s) => !s.featured)
         <p class="lp-work__more">
           Before that: internal systems for a pawnshop and jewelry chain here in the Philippines, and hospital records software
           at Fujitsu.
-          <a href="/me">See all my work and background <LandingIcon name="arrow-right" :size="16" /></a>
+          <a href="/me/">See all my work and background <LandingIcon name="arrow-right" :size="16" /></a>
         </p>
       </div>
     </section>
@@ -215,7 +215,7 @@ const more = SERVICES.filter((s) => !s.featured)
             doing the work.
           </p>
           <div class="lp-about__links">
-            <a href="/me" class="lp-btn lp-btn--ghost lp-btn--sm">Jan Kevin's full profile</a>
+            <a href="/me/" class="lp-btn lp-btn--ghost lp-btn--sm">Jan Kevin's full profile</a>
             <a href="https://ph.linkedin.com/in/iamprincejkc" target="_blank" rel="noopener noreferrer" class="lp-btn lp-btn--ghost lp-btn--sm">
               LinkedIn
               <LandingIcon name="arrow-up-right" :size="16" />

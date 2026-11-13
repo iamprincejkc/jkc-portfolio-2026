@@ -41,7 +41,7 @@ onUnmounted(() => {
   >
     <!-- Brand -->
     <div class="site-header__brand">
-      <NuxtLink to="/me" @click="close" class="tap-safe font-medium tracking-tight">JKC</NuxtLink>
+      <NuxtLink to="/me/" @click="close" class="tap-safe font-medium tracking-tight">JKC</NuxtLink>
       <span class="text-text-muted text-xs hidden md:inline ml-3">© 2026</span>
     </div>
 
@@ -49,11 +49,11 @@ onUnmounted(() => {
     <nav class="site-header__nav-desktop">
       <NuxtLink to="/">For businesses</NuxtLink>
       <a href="#work">Work</a>
-      <NuxtLink to="/about">About</NuxtLink>
+      <NuxtLink to="/about/">About</NuxtLink>
       <a href="#contact">Contact</a>
-      <NuxtLink to="/qr-generator">QR</NuxtLink>
-      <NuxtLink to="/n8n">n8n</NuxtLink>
-      <NuxtLink to="/public-api">APIs</NuxtLink>
+      <NuxtLink to="/qr-generator/">QR</NuxtLink>
+      <NuxtLink to="/n8n/">n8n</NuxtLink>
+      <NuxtLink to="/public-api/">APIs</NuxtLink>
     </nav>
 
     <!-- Desktop socials -->
@@ -87,11 +87,11 @@ onUnmounted(() => {
           <a href="#" @click="close">Home</a>
           <NuxtLink to="/" @click="close">For businesses</NuxtLink>
           <a href="#work" @click="close">Work</a>
-          <NuxtLink to="/about" @click="close">About</NuxtLink>
+          <NuxtLink to="/about/" @click="close">About</NuxtLink>
           <a href="#contact" @click="close">Contact</a>
-          <NuxtLink to="/qr-generator" @click="close">QR generator</NuxtLink>
-          <NuxtLink to="/n8n" @click="close">n8n library</NuxtLink>
-          <NuxtLink to="/public-api" @click="close">Public API directory</NuxtLink>
+          <NuxtLink to="/qr-generator/" @click="close">QR generator</NuxtLink>
+          <NuxtLink to="/n8n/" @click="close">n8n library</NuxtLink>
+          <NuxtLink to="/public-api/" @click="close">Public API directory</NuxtLink>
         </nav>
 
         <div class="menu-overlay__footer">

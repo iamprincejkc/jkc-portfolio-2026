@@ -22,7 +22,7 @@ useHead({
         'A free QR code generator that runs entirely in your browser. Shape, colour and brand the code, then download it as PNG, SVG, PDF or EPS.',
     },
   ],
-  link: [{ rel: 'canonical', href: `${siteUrl}/qr-generator` }],
+  link: [{ rel: 'canonical', href: `${siteUrl}/qr-generator/` }],
 })
 
 /* ----------------------------------------------------------------
