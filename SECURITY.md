@@ -2,7 +2,7 @@
 
 ## Reporting something
 
-Email **princejankevin@gmail.com** with what you found and how to reproduce it.
+Email **jankevin.dev@gmail.com** with what you found and how to reproduce it.
 Please do not open a public issue for anything exploitable.
 
 This is a personal portfolio, not a funded product: there is no bounty, and the honest expectation is a reply within a few days and a fix when there is one to make.

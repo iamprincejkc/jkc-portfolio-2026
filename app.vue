@@ -46,7 +46,7 @@ useHead({
           image: ogImage.value,
           jobTitle: 'Senior Software Engineer',
           description: DESCRIPTION,
-          email: 'mailto:princejankevin@gmail.com',
+          email: 'mailto:jankevin.dev@gmail.com',
           address: {
             '@type': 'PostalAddress',
             addressLocality: 'Cebu City',

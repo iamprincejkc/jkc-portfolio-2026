@@ -31,8 +31,8 @@ const year = new Date().getFullYear()
 
       <div class="text-sm md:text-right col-span-2 md:col-span-1">
         <p class="eyebrow mb-2">Contact</p>
-        <a href="mailto:princejankevin+profile@gmail.com" class="tap-safe hover:text-accent transition-colors break-all">
-          princejankevin@gmail.com
+        <a href="mailto:jankevin.dev+profile@gmail.com" class="tap-safe hover:text-accent transition-colors break-all">
+          jankevin.dev@gmail.com
         </a>
       </div>
     </div>

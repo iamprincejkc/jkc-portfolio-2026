@@ -412,7 +412,7 @@ produces, which the CDN rules do not reliably reach.
 
 ## Customizing
 
-- **Email** — replace `princejankevin+profile@gmail.com` in `ContactSection.vue` and `SiteFooter.vue`.
+- **Email** — replace `jankevin.dev+profile@gmail.com` in `ContactSection.vue` and `SiteFooter.vue`.
 - **Contact form backend** — `submit()` in `ContactSection.vue` is a stub. Wire it to Formspree, Resend, Supabase, or whatever you like.
 - **Accent color** — change `--color-accent` in `main.css` and `accent` in `tailwind.config.js`. Both must match.
 - **Add projects** — push to the `projects` array in `SelectedWork.vue` and drop the image into `public/images/`.

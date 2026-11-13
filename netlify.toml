@@ -67,3 +67,25 @@
   for = "/monthsary"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow, noarchive"
+
+# Images that emails load from this site: the contact-form emails (logo,
+# headshot) and the outreach emails (headshot, website card). The `/*` rule's
+# `Cross-Origin-Resource-Policy: same-site` stops any page or mail app on
+# another origin from showing them; Apple Mail on iPhone and webmail that load
+# images directly showed them broken, and LocalLead Finder's preview failed
+# with ERR_BLOCKED_BY_RESPONSE.NotSameSite. These few files are public on
+# purpose, so they may be embedded anywhere. Everything else stays same-site.
+[[headers]]
+  for = "/images/email/*"
+  [headers.values]
+    Cross-Origin-Resource-Policy = "cross-origin"
+
+[[headers]]
+  for = "/images/og-business.png"
+  [headers.values]
+    Cross-Origin-Resource-Policy = "cross-origin"
+
+[[headers]]
+  for = "/icon-192.png"
+  [headers.values]
+    Cross-Origin-Resource-Policy = "cross-origin"

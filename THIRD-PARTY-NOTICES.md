@@ -36,7 +36,7 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-If you are the author of a workflow here and would rather it were not, email princejankevin@gmail.com and it will be removed.
+If you are the author of a workflow here and would rather it were not, email jankevin.dev@gmail.com and it will be removed.
 
 ---
 

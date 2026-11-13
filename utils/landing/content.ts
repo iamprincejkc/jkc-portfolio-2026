@@ -20,9 +20,9 @@
  */
 export const CONTACT = {
   /** Shown as text. */
-  email: 'princejankevin@gmail.com',
+  email: 'jankevin.dev@gmail.com',
   /** What the link actually opens: the +site tag sorts replies in Gmail. */
-  emailHref: 'mailto:princejankevin+site@gmail.com?subject=Website%20for%20my%20business',
+  emailHref: 'mailto:jankevin.dev+site@gmail.com?subject=Website%20for%20my%20business',
   /** Display form, e.g. '0917 123 4567'. Empty: hidden. */
   phone: '',
   /** International digits only, e.g. '639171234567'. Used for tel: and wa.me. */
