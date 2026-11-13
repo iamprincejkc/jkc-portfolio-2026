@@ -32,7 +32,7 @@ const links = [
           <path fill="#fff" d="M34 19h9v33a4 4 0 0 1-4 4H13a4 4 0 0 1-4-4V38h9v11h16Z" />
           <rect x="57" y="45" width="11" height="11" fill="#fff" />
         </svg>
-        <span class="lp-brand__name">Jan Kevin Cadampog</span>
+        <span class="lp-brand__name">Jan Kevin</span>
       </a>
 
       <nav class="lp-header__nav" aria-label="Sections">
@@ -99,7 +99,7 @@ const links = [
 
 /* Too narrow for the name next to the switch and the button: keep it for
    screen readers, which use it as the link's name. */
-@media (max-width: 519px) {
+@media (max-width: 339px) {
   .lp-brand__name {
     position: absolute;
     width: 1px;

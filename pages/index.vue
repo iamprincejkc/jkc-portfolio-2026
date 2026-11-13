@@ -204,7 +204,7 @@ const more = SERVICES.filter((s) => !s.featured)
     <!-- About, short -->
     <section class="lp-section lp-band" aria-labelledby="about-title">
       <div class="lp-wrap lp-about">
-        <img src="/images/main.webp" alt="Jan Kevin Cadampog" width="500" height="500" loading="lazy" decoding="async" class="lp-about__photo" />
+        <img src="/images/main.webp" alt="Jan Kevin" width="500" height="500" loading="lazy" decoding="async" class="lp-about__photo" />
         <div>
           <p class="lp-eyebrow">Who you'll work with</p>
           <h2 id="about-title" class="lp-h2">Hi, I'm Jan Kevin.</h2>

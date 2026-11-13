@@ -8,11 +8,12 @@
 [build.environment]
   NODE_VERSION = "20"
   # Netlify's secret scanner fails the build when a variable marked secret
-  # appears in the repo or the output. Neither of these is secret: the site
-  # URL is printed on every page (canonical, sitemap, share cards) and in the
-  # tests, and the contact address is the owner's own inbox. Listed here so
-  # the build does not depend on the dashboard's checkbox.
-  SECRETS_SCAN_OMIT_KEYS = "NUXT_CONTACT_TO_EMAIL,NUXT_PUBLIC_SITE_URL"
+  # appears in the repo or the output. None of these is secret: the site URL
+  # is printed on every page (canonical, sitemap, share cards) and in the
+  # tests, the To address is the owner's own inbox, and the From address is on
+  # every email he sends. Listed here so the build does not depend on the
+  # dashboard's checkbox, which Netlify will not let you untick.
+  SECRETS_SCAN_OMIT_KEYS = "NUXT_CONTACT_TO_EMAIL,NUXT_CONTACT_FROM_EMAIL,NUXT_PUBLIC_SITE_URL"
 
 # NOTE: the previous SPA catch-all (/* -> /index.html 200) has been removed.
 # It would shadow every server-rendered route, including /gate and /gallery.

@@ -41,7 +41,7 @@ export default defineEventHandler(async (event) => {
   // Coerced: Nuxt parses env with `destr`, so values are not guaranteed strings.
   const apiKey = String(config.resendApiKey ?? '')
   const to = String(config.contactToEmail ?? '')
-  // Sent as "Jan Kevin Cadampog <address>" so the inbox shows a person.
+  // Sent as "Jan Kevin <address>" so the inbox shows a person.
   const from = withSenderName(String(config.contactFromEmail ?? ''))
 
   if (!apiKey || !to || !from) {

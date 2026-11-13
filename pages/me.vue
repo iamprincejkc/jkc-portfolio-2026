@@ -5,7 +5,7 @@
  * Person schema and social cards still come from app.vue.
  */
 useHead({
-  title: 'Jan Kevin Cadampog - Senior Software Engineer',
+  title: 'Jan Kevin - Senior Software Engineer',
   link: [
     /*
      * The hero mosaic is this page's LCP element and is painted from a CSS

@@ -31,13 +31,13 @@ export default defineNuxtConfig({
     head: {
       htmlAttrs: { lang: 'en' },
       // Searchers look for the person, not the initials.
-      title: 'Jan Kevin Cadampog - Senior Software Engineer',
+      title: 'Jan Kevin - Senior Software Engineer',
       meta: [
         { charset: 'utf-8' },
         { name: 'viewport', content: 'width=device-width, initial-scale=1' },
         // Keyed so the landing layout can replace it with light/dark values.
         { key: 'theme-color', name: 'theme-color', content: '#0a0a0a' },
-        { name: 'author', content: 'Jan Kevin Cadampog' },
+        { name: 'author', content: 'Jan Kevin' },
       ],
       link: [
         /*

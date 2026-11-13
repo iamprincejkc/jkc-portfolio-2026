@@ -20,7 +20,7 @@ describe('landing SEO', () => {
   })
 
   it('declares the site name on the home page URL', () => {
-    expect(node('WebSite')).toMatchObject({ url: `${base}/`, name: 'Jan Kevin Cadampog' })
+    expect(node('WebSite')).toMatchObject({ url: `${base}/`, name: 'Jan Kevin' })
   })
 
   it('gives the organisation a crawlable logo of at least 112px', () => {

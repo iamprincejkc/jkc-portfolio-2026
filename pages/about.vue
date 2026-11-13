@@ -16,16 +16,16 @@ const config = useRuntimeConfig()
 const siteUrl = String(config.public.siteUrl ?? '').replace(/\/$/, '')
 
 const DESCRIPTION =
-  'Jan Kevin Cadampog is a full-stack .NET and Angular developer in Cebu City, Philippines, with five years across RD Pawnshop, Fujitsu and OSL International.'
+  'Jan Kevin is a full-stack .NET and Angular developer in Cebu City, Philippines, with five years across RD Pawnshop, Fujitsu and OSL International.'
 
-useHead({ title: 'About — Jan Kevin Cadampog' })
+useHead({ title: 'About - Jan Kevin' })
 
 useSeoMeta({
   description: DESCRIPTION,
-  ogTitle: 'About — Jan Kevin Cadampog',
+  ogTitle: 'About - Jan Kevin',
   ogDescription: DESCRIPTION,
   ogUrl: `${siteUrl}/about/`,
-  twitterTitle: 'About — Jan Kevin Cadampog',
+  twitterTitle: 'About - Jan Kevin',
   twitterDescription: DESCRIPTION,
 })
 
@@ -67,7 +67,7 @@ const principles = [
 
         <div class="about-lede">
           <p>
-            I&rsquo;m Jan Kevin Cadampog, or JKC. I&rsquo;m a full-stack developer in Cebu City, Philippines, and a
+            I&rsquo;m Jan Kevin, or JKC. I&rsquo;m a full-stack developer in Cebu City, Philippines, and a
             Software Engineer at OSL International, where I build and maintain web platforms for companies in Japan,
             including IBC Auto and Jet Logistics. I work on both sides: the .NET APIs and the Angular front ends.
           </p>

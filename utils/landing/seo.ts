@@ -30,16 +30,16 @@ import { BASE, CONTACT, FAQS, PROJECTS, SERVICES } from './content'
  * has to be on the page too.
  */
 export const LANDING_SEO = {
-  title: 'Small Business Websites & Landing Pages | Jan Kevin Cadampog',
+  title: 'Small Business Websites & Landing Pages | Jan Kevin',
   description:
-    'Fast landing pages, Facebook and Messenger integration, booking forms and business systems for small businesses. By Senior Software Engineer Jan Kevin Cadampog.',
+    'Fast landing pages, Facebook and Messenger integration, booking forms and business systems for small businesses. By Jan Kevin, Senior Software Engineer.',
   socialTitle: 'Websites that turn Facebook visitors into customers',
   robots: 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1',
   ogImage: {
     path: '/images/og-business.png',
     width: 1200,
     height: 630,
-    alt: 'Websites that turn Facebook visitors into customers, by Jan Kevin Cadampog, Senior Software Engineer',
+    alt: 'Websites that turn Facebook visitors into customers, by Jan Kevin, Senior Software Engineer',
   },
   logo: { path: '/images/logo.png', width: 512, height: 512 },
 } as const
@@ -56,7 +56,7 @@ export function landingGraph(base: string) {
         '@type': 'WebSite',
         '@id': id('website'),
         url: `${base}/`,
-        name: 'Jan Kevin Cadampog',
+        name: 'Jan Kevin',
         alternateName: ['JKC', 'iamjkc'],
         inLanguage: 'en',
         publisher: { '@id': id('organization') },
@@ -64,7 +64,7 @@ export function landingGraph(base: string) {
       {
         '@type': 'Organization',
         '@id': id('organization'),
-        name: 'Jan Kevin Cadampog',
+        name: 'Jan Kevin',
         alternateName: 'JKC',
         url: `${base}/`,
         description: LANDING_SEO.description,
@@ -104,7 +104,7 @@ export function landingGraph(base: string) {
       {
         '@type': 'Person',
         '@id': id('person'),
-        name: 'Jan Kevin Cadampog',
+        name: 'Jan Kevin',
         alternateName: 'JKC',
         jobTitle: 'Senior Software Engineer',
         url: `${base}/me/`,

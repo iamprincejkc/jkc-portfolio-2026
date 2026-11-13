@@ -32,10 +32,11 @@ const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial
 const SERIF = "Georgia,'Times New Roman',serif"
 
 /** The name every email is sent under, so the inbox shows a person, not an address. */
-export const SENDER_NAME = 'Jan Kevin Cadampog'
+/** Never the full name: the owner's rule, it is too long. */
+export const SENDER_NAME = 'Jan Kevin'
 
 /**
- * `contact@iamjkc.space` becomes `Jan Kevin Cadampog <contact@iamjkc.space>`.
+ * `hello@example.com` becomes `Jan Kevin <hello@example.com>`.
  * An address that already carries a display name is left alone.
  */
 export function withSenderName(from: string): string {
@@ -420,7 +421,7 @@ export function renderAutoReply(msg: ContactMessage): string {
             <table role="presentation" cellpadding="0" cellspacing="0" border="0">
               <tr>
                 <td width="64" valign="middle" style="width:64px;">
-                  <img src="${escapeHtml(asset(msg.siteUrl, '/images/email/headshot.jpg'))}" width="52" height="52" alt="Jan Kevin Cadampog" style="display:block;width:52px;height:52px;border:0;border-radius:26px;" />
+                  <img src="${escapeHtml(asset(msg.siteUrl, '/images/email/headshot.jpg'))}" width="52" height="52" alt="${SENDER_NAME}" style="display:block;width:52px;height:52px;border:0;border-radius:26px;" />
                 </td>
                 <td valign="middle">
                   <div style="font:600 15px/1.35 ${SANS};color:${INK};">${SENDER_NAME}</div>

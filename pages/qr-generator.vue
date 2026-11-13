@@ -14,7 +14,7 @@ const config = useRuntimeConfig()
 const siteUrl = String(config.public.siteUrl ?? '').replace(/\/$/, '')
 
 useHead({
-  title: 'QR code generator - Jan Kevin Cadampog',
+  title: 'QR code generator - Jan Kevin',
   meta: [
     {
       name: 'description',

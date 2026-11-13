@@ -7,7 +7,7 @@ import { trackLanding } from '~/composables/useLandingAnalytics'
   <footer class="lp-footer">
     <div class="lp-wrap lp-footer__grid">
       <div>
-        <p class="lp-footer__name">Jan Kevin Cadampog</p>
+        <p class="lp-footer__name">Jan Kevin</p>
         <p class="lp-footer__muted">Senior Software Engineer, based in {{ BASE.city }}, {{ BASE.country }}</p>
         <p class="lp-footer__muted lp-footer__areas">Websites and business systems for small businesses, wherever they are.</p>
       </div>
@@ -21,7 +21,7 @@ import { trackLanding } from '~/composables/useLandingAnalytics'
       </nav>
     </div>
     <div class="lp-wrap">
-      <p class="lp-footer__fine">&copy; 2026 Jan Kevin Cadampog. This page counts visits with Google Analytics. No ads, and no advertising cookies.</p>
+      <p class="lp-footer__fine">&copy; 2026 Jan Kevin. This page counts visits with Google Analytics. No ads, and no advertising cookies.</p>
     </div>
   </footer>
 </template>

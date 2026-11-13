@@ -191,8 +191,8 @@ onBeforeUnmount(() => {
     <!-- Center stage: name on left, portrait centered -->
     <div class="hero__stage">
       <h1 class="hero__name" data-hero-reveal>
-        <span class="block">Jan&nbsp;Kevin</span>
-        <span class="block italic text-accent">Cadampog</span>
+        <span class="block">Jan</span>
+        <span class="block italic text-accent">Kevin</span>
       </h1>
 
       <!--
@@ -206,7 +206,7 @@ onBeforeUnmount(() => {
         effect now, so this is a picture rather than a control, and it should
         not advertise itself as something to click.
       -->
-      <div class="hero__portrait" role="img" aria-label="Jan Kevin Cadampog" data-hero-reveal>
+      <div class="hero__portrait" role="img" aria-label="Jan Kevin" data-hero-reveal>
         <img src="/images/main.webp" alt="" class="sizer" aria-hidden="true" />
         <div ref="tilesRef" class="tile-grid">
           <div
@@ -355,7 +355,7 @@ onBeforeUnmount(() => {
  * This must stop exactly where the desktop refinements start (min-width:
  * 1024px). It previously ended at 767px, which left 768-1023px running the
  * absolutely-positioned desktop composition without its desktop sizing: the
- * name kept `max-width: 50vw`, so "Cadampog" overflowed its box and printed
+ * name kept `max-width: 50vw`, so the surname line overflowed its box and printed
  * straight over the meta column.
  */
 @media (max-width: 1023px) {

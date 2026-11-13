@@ -61,7 +61,7 @@ def main() -> None:
     # Organization logo for structured data: at least 112x112, crawlable.
     render(512).convert("RGB").save(out / "images" / "logo.png")
     manifest = {
-        "name": "Jan Kevin Cadampog",
+        "name": "Jan Kevin",
         "short_name": "JKC",
         "start_url": "/",
         "display": "browser",

@@ -244,8 +244,8 @@ describe('business enquiries', () => {
 
 describe('branding', () => {
   it('sends under a person, not a bare address', () => {
-    expect(withSenderName('contact@iamjkc.space')).toBe('Jan Kevin Cadampog <contact@iamjkc.space>')
-    expect(withSenderName('JKC <contact@iamjkc.space>')).toBe('JKC <contact@iamjkc.space>')
+    expect(withSenderName('hello@example.com')).toBe('Jan Kevin <hello@example.com>')
+    expect(withSenderName('JKC <hello@example.com>')).toBe('JKC <hello@example.com>')
     expect(withSenderName('')).toBe('')
   })
 

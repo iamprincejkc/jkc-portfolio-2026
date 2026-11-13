@@ -130,7 +130,7 @@ onBeforeUnmount(() => {
         <div ref="revealRef" class="craft-reveal__image">
           <NuxtImg
             src="/images/me.jpg"
-            alt="Jan Kevin Cadampog"
+            alt="Jan Kevin"
             class="block w-full h-full object-cover"
           />
         </div>
@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
       <div class="craft-reveal__mobile-image">
         <NuxtImg
           src="/images/me.jpg"
-          alt="Jan Kevin Cadampog"
+          alt="Jan Kevin"
           class="w-full h-full object-cover"
         />
       </div>
