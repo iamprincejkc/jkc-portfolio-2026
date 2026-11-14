@@ -13,8 +13,10 @@ import { trackLanding } from '~/composables/useLandingAnalytics'
  *
  * The personal portfolio that used to live here is at /me.
  *
- * Prerendered, no scroll effects, no images above the fold: the hero picture
- * is HTML (components/landing/PhoneMock.vue), so the headline is the LCP.
+ * Prerendered, no scroll scripts, no images above the fold: the hero picture
+ * is HTML (components/landing/PhoneMock.vue), so the headline is the LCP. The
+ * one scroll-linked piece, the hand in components/landing/AppShowcase.vue, is
+ * CSS `position: sticky` alone.
  */
 definePageMeta({ layout: 'landing' })
 
@@ -174,6 +176,9 @@ const more = SERVICES.filter((s) => !s.featured)
         </p>
       </div>
     </section>
+
+    <!-- Own apps: a wall of phone screens and a hand that rides down it -->
+    <LandingAppShowcase />
 
     <!-- How it works -->
     <section id="how" class="lp-section" aria-labelledby="how-title">

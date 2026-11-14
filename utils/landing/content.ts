@@ -162,6 +162,65 @@ export const PROJECTS: Project[] = [
   },
 ]
 
+export interface ShowcaseShot {
+  /** File stem in public/images/showcase: `<slug>-288.webp` and `<slug>-576.webp`. */
+  slug: string
+  app: string
+  /** What the screen shows, for the image's alt text and the hover label. */
+  screen: string
+  /**
+   * The screenshot's top-edge colour. On the phone in the hand it continues up
+   * behind the notch as a status bar, so the notch never covers the app bar.
+   */
+  top?: string
+}
+
+/**
+ * JKC's own apps, for the "Apps I build for myself" section
+ * (components/landing/AppShowcase.vue). Images are built by
+ * scripts/build-showcase.mjs from each project's own screenshots, all on demo
+ * data.
+ *
+ * Five columns per row. The middle one stays empty on purpose: the phone in the
+ * hand travels down that column as the page scrolls, so it reads as one of
+ * these phones, picked up.
+ */
+export const SHOWCASE_ROWS: [ShowcaseShot, ShowcaseShot, null, ShowcaseShot, ShowcaseShot][] = [
+  [
+    { slug: 'hushkey-groups', app: 'Hushkey', screen: 'Password vault, grouped' },
+    { slug: 'tally-home', app: 'Tally', screen: 'Who has paid this month' },
+    null,
+    { slug: 'shiftbell-standup', app: 'Shiftbell', screen: 'A meeting alarm' },
+    { slug: 'jgents-mobile', app: 'JGENTS', screen: 'AI agents at work, live' },
+  ],
+  [
+    { slug: 'shiftbell-home', app: 'Shiftbell', screen: 'Work alarms' },
+    { slug: 'xray-mirror', app: 'X-Ray Mirror', screen: 'Anatomy on your reflection' },
+    null,
+    { slug: 'hushkey-item', app: 'Hushkey', screen: 'A saved login' },
+    { slug: 'tally-breakdown', app: 'Tally', screen: 'How a bill is split' },
+  ],
+  [
+    { slug: 'tally-subscriptions', app: 'Tally', screen: 'Every shared plan' },
+    { slug: 'shiftbell-late', app: 'Shiftbell', screen: 'Late to time in' },
+    null,
+    { slug: 'hushkey-locked', app: 'Hushkey', screen: 'Locked vault' },
+    { slug: 'notchpoint', app: 'Notchpoint', screen: 'AI usage limits on the desktop' },
+  ],
+]
+
+/**
+ * What plays on the phone in the hand, in order. Screens that are not on the
+ * wall, so the phone never shows the card right beside it. Exactly four: the
+ * reel's keyframes in AppShowcase.vue are written for four plus a loop copy.
+ */
+export const SHOWCASE_REEL: [ShowcaseShot, ShowcaseShot, ShowcaseShot, ShowcaseShot] = [
+  { slug: 'shiftbell-time-in', app: 'Shiftbell', screen: 'Time to clock in', top: '#0b0d13' },
+  { slug: 'hushkey-passwords', app: 'Hushkey', screen: 'Passwords, synced with the PC', top: '#12131c' },
+  { slug: 'tally-behind', app: 'Tally', screen: 'Who is behind on payments', top: '#0c0c0c' },
+  { slug: 'shiftbell-editor', app: 'Shiftbell', screen: 'Setting an alarm', top: '#a8a6a4' },
+]
+
 export interface Step {
   title: string
   body: string

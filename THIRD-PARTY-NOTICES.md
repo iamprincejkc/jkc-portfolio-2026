@@ -124,6 +124,16 @@ SOFTWARE.
 
 ---
 
+## The hand - `public/images/showcase/hand-*.webp`
+
+Cut out of [a photo by Kaboompics on Pexels](https://www.pexels.com/photo/close-up-shot-of-a-person-holding-a-mobile-phone-on-white-background-8947174/) (photo 8947174), under the [Pexels Licence](https://www.pexels.com/license/): free to use and modify, attribution not required.
+`scripts/build-showcase.mjs` keeps only the hand: it removes the backdrop and the photo's own phone, evens out the skin colour next to where the phone was, adds soft contact shadows, and crops it.
+The phone on the page is drawn in CSS, not taken from the photo.
+
+The app screens around it are this project's author's own apps.
+
+---
+
 ## Fonts
 
 Loaded from their vendors at runtime, not redistributed in this repository.
